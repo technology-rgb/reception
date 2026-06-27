@@ -313,7 +313,7 @@
       background:#f8fafc; text-align:center;
     }
 
-    /* ── Visitor badge overlay ── */
+    /* ── Visitor QR pass overlay ── */
     .badge-overlay {
       position:fixed; inset:0; z-index:250;
       background:rgba(0,0,0,0.65); display:none;
@@ -321,33 +321,42 @@
     }
     .badge-overlay.active { display:flex; }
     .badge-card {
-      background:#fff; border-radius:18px; width:100%; max-width:360px;
+      background:#fff; border-radius:18px; width:100%; max-width:340px;
       overflow:hidden; box-shadow:0 24px 64px rgba(0,0,0,0.35);
     }
     .badge-top {
-      background:var(--primary); padding:18px 20px 16px;
-      text-align:center;
+      background:var(--primary); padding:18px 20px 14px; text-align:center;
     }
-    .badge-top-logo {
-      display:inline-block; background:#fff; border-radius:10px;
-      padding:6px 18px; margin-bottom:8px;
+    .badge-confirmed-icon {
+      width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.2);
+      color:#fff; font-size:22px; font-weight:900; display:inline-flex;
+      align-items:center; justify-content:center; margin-bottom:8px;
     }
-    .badge-top-logo img { height:44px; width:auto; display:block; }
-    .badge-title-row { color:#fff; font-size:11px; letter-spacing:3px; font-weight:800; opacity:0.92; }
-    .badge-issued    { color:rgba(255,255,255,0.72); font-size:11px; margin-top:2px; }
-    .badge-body { padding:20px; }
     .badge-visitor-name {
-      font-size:22px; font-weight:800; color:var(--text);
-      text-align:center; margin-bottom:18px; line-height:1.25;
+      font-size:18px; font-weight:800; color:#fff; line-height:1.3;
     }
+    .badge-confirmed-label {
+      font-size:11px; color:rgba(255,255,255,0.78); margin-top:3px; font-weight:600;
+    }
+    .badge-body { padding:18px 20px 10px; text-align:center; }
+    .badge-scan-hint {
+      font-size:13px; color:var(--muted); line-height:1.55; margin-bottom:14px;
+    }
+    .badge-qr-wrap {
+      display:inline-flex; background:#fff; border:2px solid var(--border);
+      border-radius:12px; padding:10px; margin-bottom:10px;
+    }
+    .badge-scan-sub { font-size:11px; color:var(--muted); font-weight:600; }
+    .badge-actions { padding:10px 20px 20px; }
+
+    /* ── Shared badge table (overlay + display page) ── */
     .badge-table {
       width:100%; border:1.5px solid var(--border); border-radius:10px;
-      overflow:hidden; border-collapse:collapse; font-size:13px;
-      margin-bottom:14px;
+      overflow:hidden; border-collapse:collapse; font-size:13px; margin-bottom:14px;
     }
     .badge-table tr { border-bottom:1px solid var(--border); }
     .badge-table tr:last-child { border-bottom:none; }
-    .badge-table td { padding:8px 12px; }
+    .badge-table td { padding:8px 12px; text-align:left; }
     .badge-table td:first-child {
       color:var(--muted); font-size:10px; font-weight:700;
       text-transform:uppercase; letter-spacing:0.5px; width:90px;
@@ -358,7 +367,26 @@
       letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);
       background:#f8fafc; border-radius:6px; padding:6px;
     }
-    .badge-actions { padding:0 20px 20px; display:flex; gap:8px; }
+
+    /* ── Visitor badge display page (opened on visitor's phone via QR) ── */
+    .bd-top {
+      background:var(--primary); padding:24px 20px 20px; text-align:center;
+    }
+    .bd-logo-wrap {
+      display:inline-block; background:#fff; border-radius:10px;
+      padding:6px 18px; margin-bottom:10px;
+    }
+    .bd-logo-wrap img { height:48px; width:auto; display:block; }
+    .bd-title {
+      color:#fff; font-size:11px; letter-spacing:4px; font-weight:800; opacity:0.9;
+    }
+    .bd-date { color:rgba(255,255,255,0.72); font-size:11px; margin-top:3px; }
+    .bd-body { padding:24px 20px; }
+    .bd-name {
+      font-size:26px; font-weight:800; color:var(--text);
+      text-align:center; margin-bottom:20px; line-height:1.25;
+    }
+    .bd-loader { text-align:center; color:var(--muted); padding:40px 0; font-size:14px; }
 
     /* ── Camera scan overlay ── */
     .scan-overlay {
@@ -719,28 +747,46 @@
   </button>
 </nav>
 
-<!-- ── Visitor badge overlay ── -->
+<!-- ── Visitor QR pass overlay (shown to receptionist after confirming) ── -->
 <div class="badge-overlay" id="badgeOverlay">
   <div class="badge-card">
     <div class="badge-top">
-      <div class="badge-top-logo">
-        <img src="logo.png" alt="Avantika University">
-      </div>
-      <div class="badge-title-row">VISITOR PASS</div>
-      <div class="badge-issued" id="badgeIssued"></div>
+      <div class="badge-confirmed-icon">✓</div>
+      <div class="badge-visitor-name" id="badgeName"></div>
+      <div class="badge-confirmed-label">Confirmed &amp; Checked In</div>
     </div>
     <div class="badge-body">
-      <div class="badge-visitor-name" id="badgeName"></div>
-      <table class="badge-table">
-        <tr><td>Time In</td>    <td id="badgeTime"></td></tr>
-        <tr><td>Host</td>       <td id="badgeHost"></td></tr>
-        <tr><td>Department</td> <td id="badgeDept"></td></tr>
-        <tr><td>Purpose</td>    <td id="badgePurpose"></td></tr>
-      </table>
-      <div class="badge-valid">✔ Valid for Today Only</div>
+      <p class="badge-scan-hint">Ask the visitor to scan this QR code<br>to receive their visitor pass</p>
+      <div id="badgeQR" class="badge-qr-wrap"></div>
+      <p class="badge-scan-sub">Valid today only &nbsp;·&nbsp; <span id="badgeIssuedTime"></span></p>
     </div>
     <div class="badge-actions">
       <button class="btn btn-primary" onclick="closeBadge()" style="margin-top:0">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Visitor badge display (opened when visitor scans QR) ── -->
+<div id="badgeDisplayPage" style="display:none;min-height:100dvh;display:none;flex-direction:column">
+  <div class="bd-top">
+    <div class="bd-logo-wrap"><img src="logo.png" alt="Avantika University"></div>
+    <div class="bd-title">VISITOR PASS</div>
+    <div class="bd-date" id="bdDate"></div>
+  </div>
+  <div class="bd-body">
+    <div id="bdLoader" class="bd-loader">Loading your pass…</div>
+    <div id="bdContent" style="display:none">
+      <div class="bd-name" id="bdName"></div>
+      <table class="badge-table">
+        <tr><td>Time In</td>    <td id="bdTime"></td></tr>
+        <tr><td>Host</td>       <td id="bdHost"></td></tr>
+        <tr><td>Department</td> <td id="bdDept"></td></tr>
+        <tr><td>Purpose</td>    <td id="bdPurpose"></td></tr>
+      </table>
+      <div class="badge-valid" style="margin-top:14px">✔ Valid for Today Only</div>
+    </div>
+    <div id="bdError" style="display:none;text-align:center;color:var(--danger);padding:20px;font-weight:600">
+      This pass is invalid or has expired.
     </div>
   </div>
 </div>
@@ -1145,22 +1191,78 @@
     }
   }
 
-  /* ── Visitor badge ── */
+  /* ── Visitor QR pass ── */
+  function makeBadgeURL(id, token) {
+    const base = window.location.origin + window.location.pathname;
+    return `${base}?badge=${id}&t=${encodeURIComponent(token)}`;
+  }
+
   function showBadge(v) {
-    const d = new Date();
-    const fmt = d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
-    $('badgeIssued').textContent  = fmt;
-    $('badgeName').textContent    = v.name    || '—';
-    $('badgeTime').textContent    = v.check_in || '—';
-    $('badgeHost').textContent    = v.host    || '—';
-    $('badgeDept').textContent    = v.department || '—';
-    $('badgePurpose').textContent = v.purpose || '—';
+    $('badgeName').textContent = v.name || '—';
+    $('badgeIssuedTime').textContent = new Date().toLocaleTimeString('en-IN',
+      { hour: '2-digit', minute: '2-digit' });
+
+    const qrEl = $('badgeQR');
+    qrEl.innerHTML = '';
+    new QRCode(qrEl, {
+      text: makeBadgeURL(v.id, v.confirmation_code),
+      width: 192, height: 192,
+      colorDark: '#000000', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+
     $('badgeOverlay').classList.add('active');
   }
 
   function closeBadge() {
     $('badgeOverlay').classList.remove('active');
     loadPending();
+  }
+
+  /* ── Badge display page (visitor's phone, opened via QR scan) ── */
+  async function loadBadgeMode() {
+    /* Hide all normal app chrome */
+    document.querySelector('.header').style.display      = 'none';
+    document.querySelector('.progress').style.display    = 'none';
+    document.querySelector('.scroll-area').style.display = 'none';
+    document.querySelector('nav').style.display          = 'none';
+
+    const pg = $('badgeDisplayPage');
+    pg.style.display = 'flex';
+
+    $('bdDate').textContent = new Date().toLocaleDateString('en-IN',
+      { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+
+    const params = new URLSearchParams(window.location.search);
+    const id    = params.get('badge');
+    const token = params.get('t');
+    const today = new Date().toISOString().slice(0, 10);
+
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/visitors` +
+        `?id=eq.${id}&confirmation_code=eq.${encodeURIComponent(token)}` +
+        `&visit_date=eq.${today}` +
+        `&select=name,host,department,purpose,check_in`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const rows = await res.json();
+
+      if (!rows || !rows.length) throw new Error('not found');
+
+      const v = rows[0];
+      $('bdName').textContent    = v.name       || '—';
+      $('bdTime').textContent    = v.check_in   || '—';
+      $('bdHost').textContent    = v.host       || '—';
+      $('bdDept').textContent    = v.department || '—';
+      $('bdPurpose').textContent = v.purpose    || '—';
+
+      $('bdLoader').style.display  = 'none';
+      $('bdContent').style.display = 'block';
+    } catch (_) {
+      $('bdLoader').style.display = 'none';
+      $('bdError').style.display  = 'block';
+    }
   }
 
   async function confirmByCode() {
@@ -1170,7 +1272,7 @@
     try {
       const rows = await api('GET',
         `visitors?confirmation_code=eq.${code}&visit_date=eq.${today}&status=eq.pending` +
-        `&select=id,name,host,department,purpose,check_in&limit=1`
+        `&select=id,name,host,department,purpose,check_in,confirmation_code&limit=1`
       );
       if (!rows || !rows.length) {
         showToast('Code not found or already confirmed.', 'error');
@@ -1193,7 +1295,7 @@
       await api('PATCH', `visitors?id=eq.${id}`, { status: 'inside' });
       card.style.opacity = '0.4'; card.style.pointerEvents = 'none';
       const rows = await api('GET',
-        `visitors?id=eq.${id}&select=id,name,host,department,purpose,check_in&limit=1`
+        `visitors?id=eq.${id}&select=id,name,host,department,purpose,check_in,confirmation_code&limit=1`
       );
       setTimeout(() => card.remove(), 300);
       if (rows && rows.length) showBadge(rows[0]);
@@ -1408,6 +1510,8 @@
     el.addEventListener('input', () => el.classList.remove('error'))
   );
   window.addEventListener('load', () => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('badge') && p.get('t')) { loadBadgeMode(); return; }
     buildQR();
     $('progressBar').style.display = 'none';
   });
