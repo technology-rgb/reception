@@ -83,25 +83,28 @@ def init_db():
             check_in     TEXT NOT NULL,
             check_out    TEXT,
             visit_date   TEXT NOT NULL,
-            status       TEXT NOT NULL DEFAULT 'inside'
+            status       TEXT NOT NULL DEFAULT 'inside',
+            consented_at TEXT
         )
     """)
 
 
 # ── Write operations ──────────────────────────────────────────────────────────
 
-def check_in_visitor(name, phone, email, organization, purpose, host, department):
+def check_in_visitor(name, phone, email, organization, purpose, host, department, consented=False):
     now = datetime.now()
+    consented_at = now.isoformat() if consented else None
     _run("""
         INSERT INTO visitors
           (name, phone, email, organization, purpose, host, department,
-           check_in, visit_date, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'inside')
+           check_in, visit_date, status, consented_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'inside', ?)
     """, (
         name.strip(), phone.strip(), email.strip() or None,
         organization.strip() or None, purpose.strip(),
         host.strip(), department.strip(),
         now.strftime("%H:%M:%S"), now.strftime("%Y-%m-%d"),
+        consented_at,
     ))
 
 

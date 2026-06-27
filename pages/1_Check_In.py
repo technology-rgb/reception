@@ -30,6 +30,12 @@ with st.form("checkin_form", clear_on_submit=True):
     department = col4.selectbox("Department to Visit *", DEPARTMENTS)
     host = st.text_input("Whom to Meet (Name) *")
 
+    st.divider()
+    consent = st.checkbox(
+        "I consent to my personal data being recorded for visitor-management and security purposes. "
+        "Records are retained for **30 days** and then permanently deleted (DPDP Act compliance).",
+    )
+
     submitted = st.form_submit_button("Check In", type="primary", use_container_width=True)
 
 if submitted:
@@ -39,7 +45,9 @@ if submitted:
         st.error("Phone number is required.")
     elif not host.strip():
         st.error("Please enter the name of the person to meet.")
+    elif not consent:
+        st.error("Please accept the data consent statement before checking in.")
     else:
-        check_in_visitor(name, phone, email, organization, purpose, host, department)
+        check_in_visitor(name, phone, email, organization, purpose, host, department, consented=True)
         st.success(f"✅ **{name.strip()}** checked in successfully!")
         st.balloons()

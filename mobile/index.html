@@ -278,6 +278,24 @@
     .refresh-hint {
       font-size:11px; color:var(--muted); margin-top:4px;
     }
+
+    /* ── Consent ── */
+    .consent-wrap {
+      display: flex; gap: 10px; align-items: flex-start;
+      margin-bottom: 14px;
+      background: #f8fafc; border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 12px;
+      transition: border-color 0.2s;
+    }
+    .consent-wrap.consent-error { border-color: var(--danger); background: #fff5f5; }
+    .consent-wrap input[type="checkbox"] {
+      width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px;
+      accent-color: var(--primary); cursor: pointer;
+    }
+    .consent-wrap label {
+      font-size: 12px; color: var(--muted); font-weight: 400;
+      line-height: 1.6; cursor: pointer; margin-bottom: 0;
+    }
   </style>
 </head>
 <body>
@@ -371,6 +389,15 @@
             <option>Maintenance</option><option>Other</option>
           </select>
         </div>
+      </div>
+      <!-- Data consent (DPDP) -->
+      <div class="consent-wrap" id="consentWrap">
+        <input type="checkbox" id="consent" />
+        <label for="consent">
+          I consent to my personal data being recorded for visitor management and
+          security purposes. Records are kept for <strong>30 days</strong> and
+          then permanently deleted (DPDP Act, 2023).
+        </label>
       </div>
       <button class="btn btn-primary" id="submitBtn" onclick="submitCheckIn()">Check In</button>
       <button class="btn btn-secondary" onclick="goToStep(0)">← Back</button>
@@ -591,8 +618,13 @@
       el.classList.toggle('error', !valid);
       if (!valid) ok = false;
     });
-    if (!ok) showToast('Please fill in all required fields.', 'error');
-    return ok;
+    if (!ok) { showToast('Please fill in all required fields.', 'error'); return false; }
+    if (!$('consent').checked) {
+      $('consentWrap').classList.add('consent-error');
+      showToast('Please accept the data consent to continue.', 'error');
+      return false;
+    }
+    return true;
   }
 
   async function submitCheckIn() {
@@ -612,6 +644,7 @@
       check_in:     time,
       visit_date:   date,
       status:       'inside',
+      consented_at: new Date().toISOString(),
     };
     try {
       await api('POST', 'visitors', payload);
@@ -635,9 +668,11 @@
       $(id).value = ''; $(id).classList.remove('error');
     });
     ['department','purpose'].forEach(id => { $(id).selectedIndex = 0; $(id).classList.remove('error'); });
+    $('consent').checked = false;
+    $('consentWrap').classList.remove('consent-error');
     $('submitBtn').disabled = false; $('submitBtn').innerHTML = 'Check In';
     currentStep = 0;
-    showKiosk(); // Return to QR kiosk after check-in
+    showKiosk();
   }
 
   /* ═══════════════════════════════ ADMIN ═══════════════════════════════════ */
@@ -767,6 +802,9 @@
   /* ── Init ── */
   document.querySelectorAll('input,select').forEach(el =>
     el.addEventListener('input', () => el.classList.remove('error'))
+  );
+  $('consent').addEventListener('change', () =>
+    $('consentWrap').classList.remove('consent-error')
   );
 
   // Build QR on load; hide progress bar (kiosk is default)
