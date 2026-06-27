@@ -1,0 +1,24 @@
+{
+  "name": "Avantika University — Visitor Check-In",
+  "short_name": "AU Visitor",
+  "description": "Visitor self check-in for Avantika University",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a237e",
+  "theme_color": "#1a237e",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1a237e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AU Visitor" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Visitor Check-In — Avantika University</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #1a237e;
+      --primary-light: #3949ab;
+      --accent: #ff6f00;
+      --bg: #f0f2f8;
+      --card: #ffffff;
+      --text: #1a1a2e;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --success: #16a34a;
+      --radius: 16px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(160deg, var(--primary) 0%, var(--primary-light) 100%);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 16px 32px;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      color: #fff;
+      padding: 24px 0 20px;
+      width: 100%;
+    }
+    .header .logo {
+      font-size: 40px;
+      margin-bottom: 6px;
+    }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .header p {
+      font-size: 13px;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
+    /* ── Progress bar ── */
+    .progress {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .progress-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      transition: all 0.3s;
+    }
+    .progress-dot.active {
+      background: #fff;
+      width: 24px;
+      border-radius: 4px;
+    }
+    .progress-dot.done { background: rgba(255,255,255,0.7); }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+
+    .step { display: none; }
+    .step.active { display: block; }
+
+    .step-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .step-subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    /* ── Form fields ── */
+    .field { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    label .req { color: var(--accent); }
+    label .opt { color: var(--muted); font-weight: 400; }
+
+    input, select {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 16px;
+      color: var(--text);
+      background: #fff;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus { border-color: var(--primary-light); }
+    input.error, select.error { border-color: #ef4444; }
+
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+      font-size: 14px;
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── Buttons ── */
+    .btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:active { background: var(--primary-light); transform: scale(0.98); }
+    .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--primary);
+      border: 1.5px solid var(--border);
+      margin-top: 4px;
+    }
+
+    /* ── Success screen ── */
+    .success-screen {
+      display: none;
+      text-align: center;
+      padding: 16px 0;
+    }
+    .success-screen.show { display: block; }
+    .success-icon {
+      font-size: 72px;
+      margin-bottom: 16px;
+      animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes pop {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .success-screen h2 { font-size: 22px; color: var(--success); margin-bottom: 8px; }
+    .success-screen p  { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+    .success-detail {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 14px;
+      margin: 16px 0;
+      text-align: left;
+    }
+    .success-detail p { color: var(--text); font-size: 14px; margin-bottom: 4px; }
+    .success-detail p:last-child { margin-bottom: 0; }
+
+    /* ── Error toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px; left: 16px; right: 16px;
+      background: #ef4444;
+      color: #fff;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 100;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🏛️</div>
+  <h1>Avantika University</h1>
+  <p>Visitor Check-In</p>
+</div>
+
+<div class="progress" id="progressBar">
+  <div class="progress-dot active" id="dot0"></div>
+  <div class="progress-dot" id="dot1"></div>
+  <div class="progress-dot" id="dot2"></div>
+</div>
+
+<div class="card">
+
+  <!-- Step 1: Visitor info -->
+  <div class="step active" id="step0">
+    <div class="step-title">Who are you?</div>
+    <div class="step-subtitle">Step 1 of 2 — Your personal details</div>
+
+    <div class="field">
+      <label>Full Name <span class="req">*</span></label>
+      <input type="text" id="name" placeholder="e.g. Rahul Sharma" autocomplete="name" />
+    </div>
+    <div class="field">
+      <label>Phone Number <span class="req">*</span></label>
+      <input type="tel" id="phone" placeholder="e.g. 9876543210" autocomplete="tel" inputmode="tel" />
+    </div>
+    <div class="field">
+      <label>Email <span class="opt">(optional)</span></label>
+      <input type="email" id="email" placeholder="e.g. rahul@email.com" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label>Organization / Institution <span class="opt">(optional)</span></label>
+      <input type="text" id="organization" placeholder="e.g. RGPV University" />
+    </div>
+
+    <button class="btn btn-primary" onclick="goToStep(1)">Next →</button>
+  </div>
+
+  <!-- Step 2: Visit details -->
+  <div class="step" id="step1">
+    <div class="step-title">Your visit</div>
+    <div class="step-subtitle">Step 2 of 2 — Why are you here?</div>
+
+    <div class="field">
+      <label>Whom to Meet <span class="req">*</span></label>
+      <input type="text" id="host" placeholder="e.g. Dr. Arvind Sharma" />
+    </div>
+    <div class="field">
+      <label>Department <span class="req">*</span></label>
+      <div class="select-wrap">
+        <select id="department">
+          <option value="" disabled selected>Select department</option>
+          <option>Administration</option>
+          <option>Academics</option>
+          <option>Admissions</option>
+          <option>Accounts / Finance</option>
+          <option>Library</option>
+          <option>Hostel</option>
+          <option>IT Department</option>
+          <option>Director's Office</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Purpose of Visit <span class="req">*</span></label>
+      <div class="select-wrap">
+        <select id="purpose">
+          <option value="" disabled selected>Select purpose</option>
+          <option>Meeting / Appointment</option>
+          <option>Admission Enquiry</option>
+          <option>Fee Payment</option>
+          <option>Document Submission</option>
+          <option>Interview</option>
+          <option>Delivery</option>
+          <option>Maintenance</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">Check In</button>
+    <button class="btn btn-secondary" onclick="goToStep(0)">← Back</button>
+  </div>
+
+  <!-- Success screen -->
+  <div class="success-screen" id="successScreen">
+    <div class="success-icon">✅</div>
+    <h2>Checked In!</h2>
+    <p>Welcome to Avantika University</p>
+    <div class="success-detail" id="successDetail"></div>
+    <button class="btn btn-primary" onclick="resetForm()" style="margin-top:0">New Check-In</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL  = 'https://tysklexaaucinoqtrtaa.supabase.co';
+  const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5c2tsZXhhYXVjaW5vcXRydGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1Mzk0NTgsImV4cCI6MjA5ODExNTQ1OH0.7KosQJb1ArozLi47UKtAMRv4NQC_eelFstrVk3u-DLs';
+
+  let currentStep = 0;
+
+  function goToStep(n) {
+    if (n === 1 && !validateStep0()) return;
+    document.getElementById('step' + currentStep).classList.remove('active');
+    currentStep = n;
+    document.getElementById('step' + currentStep).classList.add('active');
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function updateProgress() {
+    for (let i = 0; i < 3; i++) {
+      const dot = document.getElementById('dot' + i);
+      dot.className = 'progress-dot';
+      if (i < currentStep) dot.classList.add('done');
+      else if (i === currentStep) dot.classList.add('active');
+    }
+  }
+
+  function validateStep0() {
+    let ok = true;
+    ['name', 'phone'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el.value.trim()) { el.classList.add('error'); ok = false; }
+      else el.classList.remove('error');
+    });
+    if (!ok) showToast('Please fill in Name and Phone.');
+    return ok;
+  }
+
+  function validateStep1() {
+    let ok = true;
+    ['host', 'department', 'purpose'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el.value.trim()) { el.classList.add('error'); ok = false; }
+      else el.classList.remove('error');
+    });
+    if (!ok) showToast('Please fill in all required fields.');
+    return ok;
+  }
+
+  async function submitForm() {
+    if (!validateStep1()) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Checking in...';
+
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const checkIn   = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const visitDate = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+
+    const payload = {
+      name:         document.getElementById('name').value.trim(),
+      phone:        document.getElementById('phone').value.trim(),
+      email:        document.getElementById('email').value.trim() || null,
+      organization: document.getElementById('organization').value.trim() || null,
+      host:         document.getElementById('host').value.trim(),
+      department:   document.getElementById('department').value,
+      purpose:      document.getElementById('purpose').value,
+      check_in:     checkIn,
+      visit_date:   visitDate,
+      status:       'inside',
+    };
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/visitors`, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey':        SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer':        'return=minimal',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err);
+      }
+
+      // Show success
+      document.getElementById('step1').classList.remove('active');
+      document.getElementById('progressBar').style.display = 'none';
+      document.getElementById('successDetail').innerHTML = `
+        <p><strong>👤 ${payload.name}</strong></p>
+        <p>📞 ${payload.phone}</p>
+        <p>📍 ${payload.department}</p>
+        <p>🤝 Meeting: ${payload.host}</p>
+        <p>🕐 Checked in at ${checkIn}</p>
+      `;
+      document.getElementById('successScreen').classList.add('show');
+
+    } catch (e) {
+      showToast('Check-in failed. Please try again.');
+      console.error(e);
+      btn.disabled = false;
+      btn.innerHTML = 'Check In';
+    }
+  }
+
+  function resetForm() {
+    ['name','phone','email','organization','host'].forEach(id => {
+      document.getElementById(id).value = '';
+      document.getElementById(id).classList.remove('error');
+    });
+    ['department','purpose'].forEach(id => {
+      document.getElementById(id).selectedIndex = 0;
+      document.getElementById(id).classList.remove('error');
+    });
+    document.getElementById('successScreen').classList.remove('show');
+    document.getElementById('progressBar').style.display = 'flex';
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('submitBtn').innerHTML = 'Check In';
+    currentStep = 0;
+    document.getElementById('step0').classList.add('active');
+    updateProgress();
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // Remove error highlight on input
+  document.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input', () => el.classList.remove('error'));
+  });
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
