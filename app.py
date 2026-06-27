@@ -11,8 +11,12 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("Reception Desk")
-st.caption("Avantika University — Visitor Management System")
+col_logo, col_title = st.columns([1, 6])
+with col_logo:
+    st.image("mobile/logo.png", width=80)
+with col_title:
+    st.title("Reception Desk")
+    st.caption("Avantika University — Visitor Management System")
 
 
 @st.cache_resource(show_spinner="Starting public access tunnel...")
