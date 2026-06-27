@@ -279,6 +279,44 @@
       font-size:11px; color:var(--muted); margin-top:4px;
     }
 
+    /* ── Entry code display (success screen) ── */
+    .success-code {
+      background: var(--primary); color: #fff;
+      border-radius: 14px; padding: 20px 16px;
+      margin: 14px 0; text-align: center;
+    }
+    .code-label { font-size: 11px; opacity: 0.75; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .code-display {
+      font-size: 52px; font-weight: 900; letter-spacing: 10px;
+      line-height: 1; margin-bottom: 8px;
+    }
+    .code-hint { font-size: 12px; opacity: 0.8; line-height: 1.4; }
+
+    /* ── Code confirm (admin pending tab) ── */
+    .code-confirm-wrap {
+      display: flex; gap: 8px; margin-bottom: 14px; align-items: stretch;
+    }
+    .code-confirm-wrap input {
+      flex: 1; text-align: center; font-size: 24px; font-weight: 800;
+      letter-spacing: 6px; padding: 10px; border: 1.5px solid var(--border);
+      border-radius: 10px; outline: none;
+    }
+    .code-confirm-wrap input:focus { border-color: var(--primary-light); }
+    .confirm-btn {
+      flex-shrink: 0; width: 54px; background: var(--success);
+      color: #fff; border: none; border-radius: 10px;
+      font-size: 20px; font-weight: 700; cursor: pointer;
+    }
+    .confirm-btn:active { opacity: 0.85; }
+
+    /* ── Pending code badge ── */
+    .pending-code {
+      font-size: 22px; font-weight: 900; color: var(--primary);
+      letter-spacing: 4px; display: block; margin-bottom: 4px; line-height: 1;
+    }
+    .btn-sm-primary { background: #dbeafe; color: var(--primary); }
+    .btn-sm-primary:active { background: var(--primary); color: #fff; }
+
     /* ── Consent ── */
     .consent-wrap {
       display: flex; gap: 10px; align-items: flex-start;
@@ -406,9 +444,14 @@
     <!-- Success -->
     <div class="success-screen" id="successScreen">
       <div class="card" style="text-align:center">
-        <div class="success-icon">✅</div>
-        <h2>Checked In!</h2>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Welcome to Avantika University</p>
+        <div class="success-icon">📋</div>
+        <h2>Request Submitted!</h2>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:4px">Show this code at the reception desk</p>
+        <div class="success-code">
+          <div class="code-label">Your entry code</div>
+          <div class="code-display" id="entryCode">----</div>
+          <div class="code-hint">Tell this code to the receptionist to complete your check-in</div>
+        </div>
         <div class="success-detail" id="successDetail"></div>
         <button class="btn btn-primary" onclick="resetCheckin()" style="margin-top:0">New Check-In</button>
       </div>
@@ -447,9 +490,25 @@
           <button class="admin-tab active" id="atab-active" onclick="switchAdminTab('active')">
             ✅ Active
           </button>
+          <button class="admin-tab" id="atab-pending" onclick="switchAdminTab('pending')">
+            ⏳ Pending
+          </button>
           <button class="admin-tab" id="atab-log" onclick="switchAdminTab('log')">
             📋 Log
           </button>
+        </div>
+
+        <!-- Pending visitors panel -->
+        <div id="panel-pending" style="display:none">
+          <div class="code-confirm-wrap">
+            <input id="codeInput" type="tel" inputmode="numeric" maxlength="4"
+                   placeholder="_ _ _ _"
+                   oninput="this.value=this.value.replace(/\D/g,'')"
+                   onkeydown="if(event.key==='Enter')confirmByCode()" />
+            <button class="confirm-btn" onclick="confirmByCode()">✓</button>
+          </div>
+          <div class="section-label">Awaiting Reception</div>
+          <div id="pendingList"><div class="empty-state"><div class="emoji">⏳</div>Loading…</div></div>
         </div>
 
         <!-- Active visitors panel -->
@@ -532,7 +591,8 @@
     const d = new Date();
     return {
       time: `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,
-      date: `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+      date: `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,
+      iso:  d.toISOString(),
     };
   }
 
@@ -632,29 +692,55 @@
     const btn = $('submitBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Checking in…';
-    const {time, date} = now();
+
+    const {time, date, iso} = now();
+    const phone = $('phone').value.trim();
+
+    // ── Duplicate guard ──────────────────────────────────────────────────────
+    try {
+      const dupes = await api('GET',
+        `visitors?phone=eq.${encodeURIComponent(phone)}&visit_date=eq.${date}` +
+        `&status=in.(pending,inside)&select=name,check_in,status&limit=1`
+      );
+      if (dupes && dupes.length > 0) {
+        const d = dupes[0];
+        const label = d.status === 'pending'
+          ? 'already submitted (pending confirmation)'
+          : 'already checked in';
+        showToast(`You are ${label} today (at ${d.check_in}). Please go to the reception desk.`, 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Check In';
+        return;
+      }
+    } catch (_) { /* network hiccup — proceed */ }
+
+    // ── Generate 4-digit confirmation code ──────────────────────────────────
+    const code = String(Math.floor(1000 + Math.random() * 9000));
+
     const payload = {
-      name:         $('name').value.trim(),
-      phone:        $('phone').value.trim(),
-      email:        $('email').value.trim() || null,
-      organization: $('organization').value.trim() || null,
-      host:         $('host').value.trim(),
-      department:   $('department').value,
-      purpose:      $('purpose').value,
-      check_in:     time,
-      visit_date:   date,
-      status:       'inside',
-      consented_at: new Date().toISOString(),
+      name:              $('name').value.trim(),
+      phone,
+      email:             $('email').value.trim() || null,
+      organization:      $('organization').value.trim() || null,
+      host:              $('host').value.trim(),
+      department:        $('department').value,
+      purpose:           $('purpose').value,
+      check_in:          time,
+      visit_date:        date,
+      status:            'pending',
+      consented_at:      iso,
+      confirmation_code: code,
     };
+
     try {
       await api('POST', 'visitors', payload);
       $('step1').classList.remove('active');
       $('progressBar').style.display = 'none';
+      $('entryCode').textContent = code;
       $('successDetail').innerHTML = `
         <p><strong>👤 ${payload.name}</strong></p>
         <p>📞 ${payload.phone}</p>
-        <p>📍 ${payload.department} — ${payload.host}</p>
-        <p>🕐 Checked in at ${time}</p>`;
+        <p>📍 ${payload.department} — ${payload.host}</p>`;
       $('successScreen').classList.add('show');
     } catch(e) {
       showToast('Check-in failed. Try again.', 'error');
@@ -706,12 +792,81 @@
   let activeVisitors = [];
 
   function switchAdminTab(name) {
-    ['active','log'].forEach(t => {
+    ['active','pending','log'].forEach(t => {
       $(`atab-${t}`).classList.toggle('active', t === name);
       $(`panel-${t}`).style.display = t === name ? 'block' : 'none';
     });
-    if (name === 'active') loadActive();
+    if (name === 'active')  loadActive();
+    else if (name === 'pending') loadPending();
     else loadLog();
+  }
+
+  /* ── Pending visitors ── */
+  async function loadPending() {
+    $('pendingList').innerHTML = '<div class="empty-state"><div class="emoji">⏳</div>Loading…</div>';
+    try {
+      const today = now().date;
+      const rows = await api('GET',
+        `visitors?status=eq.pending&visit_date=eq.${today}&select=*&order=check_in.desc`
+      );
+      if (!rows || !rows.length) {
+        $('pendingList').innerHTML = '<div class="empty-state"><div class="emoji">✅</div>No pending check-ins.</div>';
+        return;
+      }
+      $('pendingList').innerHTML = rows.map(v => `
+        <div class="visitor-card" id="pvc-${v.id}">
+          <div class="info">
+            <strong>${v.name}</strong>
+            <span>📞 ${v.phone}</span>
+            <span>🤝 ${v.host} · ${v.department}</span>
+            <span>🕐 Submitted ${v.check_in}</span>
+          </div>
+          <div style="text-align:center">
+            <span class="pending-code">${v.confirmation_code}</span>
+            <button class="btn-sm btn-sm-primary" onclick="confirmVisitor(${v.id},'${v.name.replace(/'/g,'\\\'')}')" >Confirm</button>
+          </div>
+        </div>`).join('');
+    } catch(e) {
+      $('pendingList').innerHTML = '<div class="empty-state">Failed to load.</div>';
+    }
+  }
+
+  async function confirmByCode() {
+    const code = $('codeInput').value.trim();
+    if (code.length !== 4) { showToast('Enter a 4-digit code.', 'error'); return; }
+    const today = now().date;
+    try {
+      const rows = await api('GET',
+        `visitors?confirmation_code=eq.${code}&visit_date=eq.${today}&status=eq.pending&select=id,name&limit=1`
+      );
+      if (!rows || !rows.length) {
+        showToast('Code not found or already confirmed.', 'error');
+        return;
+      }
+      const v = rows[0];
+      await api('PATCH', `visitors?id=eq.${v.id}`, { status: 'inside' });
+      $('codeInput').value = '';
+      showToast(`${v.name} confirmed and checked in! ✓`, 'success');
+      loadPending();
+    } catch(e) {
+      showToast('Confirmation failed. Try again.', 'error');
+    }
+  }
+
+  async function confirmVisitor(id, name) {
+    const card = $(`pvc-${id}`);
+    const btn = card.querySelector('button');
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      await api('PATCH', `visitors?id=eq.${id}`, { status: 'inside' });
+      card.style.opacity = '0.4';
+      card.style.pointerEvents = 'none';
+      showToast(`${name} confirmed! ✓`, 'success');
+      setTimeout(() => card.remove(), 800);
+    } catch(e) {
+      showToast('Failed to confirm.', 'error');
+      btn.disabled = false; btn.textContent = 'Confirm';
+    }
   }
 
   /* ── Active visitors ── */

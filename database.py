@@ -46,6 +46,7 @@ def _sql(q: str, pg: bool) -> str:
     if pg:
         q = q.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
         q = q.replace("?", "%s")
+        q = q.replace("IN ('pending', 'inside')", "IN ('pending', 'inside')")
     return q
 
 
@@ -72,40 +73,60 @@ def _fetch(query: str, params=()) -> list[dict]:
 def init_db():
     _run("""
         CREATE TABLE IF NOT EXISTS visitors (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            name         TEXT NOT NULL,
-            phone        TEXT NOT NULL,
-            email        TEXT,
-            organization TEXT,
-            purpose      TEXT NOT NULL,
-            host         TEXT NOT NULL,
-            department   TEXT NOT NULL,
-            check_in     TEXT NOT NULL,
-            check_out    TEXT,
-            visit_date   TEXT NOT NULL,
-            status       TEXT NOT NULL DEFAULT 'inside',
-            consented_at TEXT
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            name              TEXT NOT NULL,
+            phone             TEXT NOT NULL,
+            email             TEXT,
+            organization      TEXT,
+            purpose           TEXT NOT NULL,
+            host              TEXT NOT NULL,
+            department        TEXT NOT NULL,
+            check_in          TEXT NOT NULL,
+            check_out         TEXT,
+            visit_date        TEXT NOT NULL,
+            status            TEXT NOT NULL DEFAULT 'inside',
+            consented_at      TEXT,
+            confirmation_code TEXT
         )
     """)
+    # Migrate existing databases — safe to re-run, errors mean column exists
+    for ddl in [
+        "ALTER TABLE visitors ADD COLUMN consented_at TEXT",
+        "ALTER TABLE visitors ADD COLUMN confirmation_code TEXT",
+    ]:
+        try:
+            _run(ddl)
+        except Exception:
+            pass
 
 
 # ── Write operations ──────────────────────────────────────────────────────────
 
-def check_in_visitor(name, phone, email, organization, purpose, host, department, consented=False):
+def check_in_visitor(name, phone, email, organization, purpose, host, department,
+                     consented=False, pending=False):
+    """
+    Insert a visitor record.
+    pending=True  → status='pending', generates a 4-digit confirmation_code, returns the code.
+    pending=False → status='inside'  (staff-assisted, already confirmed), returns None.
+    """
+    from random import randint
     now = datetime.now()
     consented_at = now.isoformat() if consented else None
+    status = "pending" if pending else "inside"
+    code = str(randint(1000, 9999)) if pending else None
     _run("""
         INSERT INTO visitors
           (name, phone, email, organization, purpose, host, department,
-           check_in, visit_date, status, consented_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'inside', ?)
+           check_in, visit_date, status, consented_at, confirmation_code)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         name.strip(), phone.strip(), email.strip() or None,
         organization.strip() or None, purpose.strip(),
         host.strip(), department.strip(),
         now.strftime("%H:%M:%S"), now.strftime("%Y-%m-%d"),
-        consented_at,
+        status, consented_at, code,
     ))
+    return code
 
 
 def check_out_visitor(visitor_id):
@@ -115,7 +136,37 @@ def check_out_visitor(visitor_id):
     )
 
 
+def confirm_visitor_by_code(code: str) -> dict | None:
+    """Confirm a pending visitor using their 4-digit code. Returns the record or None."""
+    rows = _fetch(
+        "SELECT * FROM visitors WHERE confirmation_code = ? AND visit_date = ? AND status = 'pending'",
+        (code.strip(), date.today().isoformat()),
+    )
+    if not rows:
+        return None
+    v = rows[0]
+    _run("UPDATE visitors SET status = 'inside' WHERE id = ?", (v["id"],))
+    return v
+
+
 # ── Read operations ───────────────────────────────────────────────────────────
+
+def get_todays_active_checkin(phone: str) -> dict | None:
+    """Return today's pending/inside record for this phone number, or None."""
+    rows = _fetch(
+        "SELECT id, name, check_in, status FROM visitors "
+        "WHERE phone = ? AND visit_date = ? AND status IN ('pending', 'inside')",
+        (phone.strip(), date.today().isoformat()),
+    )
+    return rows[0] if rows else None
+
+
+def get_pending_visitors() -> list[dict]:
+    return _fetch(
+        "SELECT * FROM visitors WHERE status = 'pending' AND visit_date = ? ORDER BY check_in DESC",
+        (date.today().isoformat(),),
+    )
+
 
 def get_active_visitors():
     return _fetch(
@@ -167,15 +218,21 @@ def get_report_data(from_date: str, to_date: str):
 
 def get_today_stats():
     today = date.today().isoformat()
-    rows = _fetch("SELECT COUNT(*) AS n FROM visitors WHERE visit_date = ?", (today,))
+    rows = _fetch(
+        "SELECT COUNT(*) AS n FROM visitors WHERE visit_date = ? AND status != 'pending'", (today,)
+    )
     total = rows[0]["n"]
     rows = _fetch(
         "SELECT COUNT(*) AS n FROM visitors WHERE visit_date = ? AND status = 'inside'", (today,)
     )
     inside = rows[0]["n"]
+    rows = _fetch(
+        "SELECT COUNT(*) AS n FROM visitors WHERE visit_date = ? AND status = 'pending'", (today,)
+    )
+    pending = rows[0]["n"]
     hourly = _fetch("""
         SELECT substr(check_in, 1, 2) AS hour, COUNT(*) AS count
-        FROM visitors WHERE visit_date = ?
+        FROM visitors WHERE visit_date = ? AND status != 'pending'
         GROUP BY hour ORDER BY hour
     """, (today,))
-    return {"total": total, "inside": inside, "hourly": hourly}
+    return {"total": total, "inside": inside, "pending": pending, "hourly": hourly}
