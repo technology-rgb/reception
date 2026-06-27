@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="AU Visitor" />
   <link rel="manifest" href="manifest.json" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <title>Visitor Check-In — Avantika University</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -241,6 +242,42 @@
       text-transform:uppercase; letter-spacing:0.5px;
       margin-bottom:10px;
     }
+
+    /* ── QR Kiosk ── */
+    .kiosk-screen {
+      width:100%; max-width:480px;
+      display:none; flex-direction:column; align-items:center; gap:16px;
+    }
+    .kiosk-screen.active { display:flex; }
+
+    .qr-card {
+      background:#fff; border-radius:var(--radius);
+      padding:28px 24px 20px; width:100%;
+      box-shadow:0 8px 32px rgba(0,0,0,0.18);
+      text-align:center;
+    }
+    .qr-card h2 { font-size:20px; font-weight:800; color:var(--text); margin-bottom:4px; }
+    .qr-card p  { font-size:13px; color:var(--muted); margin-bottom:20px; }
+
+    #qrCanvas {
+      display:flex; justify-content:center; align-items:center;
+      background:#fff; padding:12px; border-radius:12px;
+      border:2px solid var(--border); margin:0 auto 20px;
+      width:fit-content;
+    }
+    #qrCanvas canvas, #qrCanvas img { border-radius:6px; }
+
+    .divider {
+      display:flex; align-items:center; gap:12px;
+      color:var(--muted); font-size:13px; margin:4px 0 16px;
+    }
+    .divider::before, .divider::after {
+      content:''; flex:1; height:1px; background:var(--border);
+    }
+
+    .refresh-hint {
+      font-size:11px; color:var(--muted); margin-top:4px;
+    }
   </style>
 </head>
 <body>
@@ -264,8 +301,22 @@
   <!-- ════ CHECK-IN TAB ════ -->
   <div class="tab active" id="tab-checkin">
 
+    <!-- QR Kiosk screen (default) -->
+    <div class="kiosk-screen active" id="kioskScreen">
+      <div class="qr-card">
+        <h2>👋 Welcome</h2>
+        <p>Scan the QR code with your phone to check in, or fill the form on this device.</p>
+        <div id="qrCanvas"></div>
+        <div class="divider">or</div>
+        <button class="btn btn-primary" onclick="showForm()" style="margin-top:0">
+          Fill form on this device →
+        </button>
+        <p class="refresh-hint">QR refreshes automatically</p>
+      </div>
+    </div>
+
     <!-- Step 0: Personal details -->
-    <div class="step active card" id="step0">
+    <div class="step card" id="step0">
       <div class="step-title">Who are you?</div>
       <div class="step-subtitle">Step 1 of 2 — Your personal details</div>
       <div class="field">
@@ -285,6 +336,7 @@
         <input type="text" id="organization" placeholder="e.g. RGPV University" />
       </div>
       <button class="btn btn-primary" onclick="goToStep(1)">Next →</button>
+      <button class="btn btn-secondary" onclick="showKiosk()">← Show QR instead</button>
     </div>
 
     <!-- Step 1: Visit details -->
@@ -416,6 +468,35 @@
   /* SHA-256 of "admin123" — change this if you change the password */
   const ADMIN_HASH = '97a58792a54beade25b1151ca2120bedf3db0e5663b98beec5c5e7ee1f9a3b44';
 
+  /* ── QR Kiosk ── */
+  function buildQR() {
+    const el = document.getElementById('qrCanvas');
+    el.innerHTML = '';
+    const url = window.location.href.split('?')[0].split('#')[0];
+    new QRCode(el, {
+      text: url,
+      width: 220, height: 220,
+      colorDark: '#1a237e',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  }
+
+  function showKiosk() {
+    document.getElementById('kioskScreen').classList.add('active');
+    ['step0','step1'].forEach(id => document.getElementById(id).classList.remove('active'));
+    document.getElementById('successScreen').classList.remove('show');
+    document.getElementById('progressBar').style.display = 'none';
+    currentStep = 0;
+  }
+
+  function showForm() {
+    document.getElementById('kioskScreen').classList.remove('active');
+    document.getElementById('step0').classList.add('active');
+    document.getElementById('progressBar').style.display = 'flex';
+    updateDots();
+  }
+
   /* ── Helpers ── */
   const $ = id => document.getElementById(id);
   const pad = n => String(n).padStart(2, '0');
@@ -461,8 +542,11 @@
       $(`tab-${t}`).classList.toggle('active', t === name);
       $(`nav-${t}`).classList.toggle('active', t === name);
     });
-    $('progressBar').style.display = name === 'checkin' ? 'flex' : 'none';
     $('headerSub').textContent = name === 'checkin' ? 'Visitor Check-In' : 'Admin Panel';
+    if (name === 'checkin') {
+      // Return to kiosk whenever switching back to check-in tab
+      showKiosk();
+    }
     if (name === 'admin' && sessionStorage.getItem('adminOk') === '1') {
       showAdminDashboard();
     }
@@ -551,12 +635,9 @@
       $(id).value = ''; $(id).classList.remove('error');
     });
     ['department','purpose'].forEach(id => { $(id).selectedIndex = 0; $(id).classList.remove('error'); });
-    $('successScreen').classList.remove('show');
-    $('progressBar').style.display = 'flex';
     $('submitBtn').disabled = false; $('submitBtn').innerHTML = 'Check In';
     currentStep = 0;
-    $('step0').classList.add('active');
-    updateDots();
+    showKiosk(); // Return to QR kiosk after check-in
   }
 
   /* ═══════════════════════════════ ADMIN ═══════════════════════════════════ */
@@ -687,6 +768,12 @@
   document.querySelectorAll('input,select').forEach(el =>
     el.addEventListener('input', () => el.classList.remove('error'))
   );
+
+  // Build QR on load; hide progress bar (kiosk is default)
+  window.addEventListener('load', () => {
+    buildQR();
+    $('progressBar').style.display = 'none';
+  });
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
