@@ -1,6 +1,7 @@
 import os
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urlparse, unquote
 
 # DATABASE_URL can come from Streamlit secrets (cloud) or env var (local).
 # Unset → SQLite is used automatically.
@@ -22,7 +23,15 @@ def _connect():
     if _PG:
         import psycopg2
         import psycopg2.extras
-        conn = psycopg2.connect(_DATABASE_URL)
+        parsed = urlparse(_DATABASE_URL)
+        conn = psycopg2.connect(
+            host=parsed.hostname,
+            port=parsed.port or 5432,
+            dbname=parsed.path.lstrip("/"),
+            user=parsed.username,
+            password=unquote(parsed.password or ""),
+            sslmode="require",
+        )
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     else:
         import sqlite3
