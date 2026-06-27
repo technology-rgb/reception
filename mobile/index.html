@@ -405,20 +405,27 @@
 
     /* ── Consent ── */
     .consent-wrap {
-      display: flex; gap: 10px; align-items: flex-start;
+      display: flex; gap: 12px; align-items: flex-start;
       margin-bottom: 14px;
       background: #f8fafc; border: 1.5px solid var(--border);
       border-radius: 10px; padding: 12px;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: pointer; user-select: none; -webkit-user-select: none;
     }
     .consent-wrap.consent-error { border-color: var(--danger); background: #fff5f5; }
-    .consent-wrap input[type="checkbox"] {
-      width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px;
-      accent-color: var(--primary); cursor: pointer;
+    .consent-wrap.consent-checked { border-color: var(--primary); background: #fff7f5; }
+    .consent-box {
+      width: 24px; height: 24px; min-width: 24px; min-height: 24px;
+      border: 2px solid var(--border); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+      transition: all 0.18s; background: #fff; font-size: 15px; line-height: 1;
     }
-    .consent-wrap label {
-      font-size: 12px; color: var(--muted); font-weight: 400;
-      line-height: 1.6; cursor: pointer; margin-bottom: 0;
+    .consent-wrap.consent-checked .consent-box {
+      background: var(--primary); border-color: var(--primary); color: #fff;
+    }
+    .consent-text {
+      font-size: 12px; color: var(--muted); font-weight: 400; line-height: 1.6;
     }
   </style>
 </head>
@@ -531,13 +538,13 @@
         </div>
       </div>
       <!-- Data consent (DPDP) -->
-      <div class="consent-wrap" id="consentWrap">
-        <input type="checkbox" id="consent" />
-        <label for="consent">
+      <div class="consent-wrap" id="consentWrap" onclick="toggleConsent()">
+        <div class="consent-box" id="consentBox"></div>
+        <span class="consent-text">
           I consent to my personal data being recorded for visitor management and
           security purposes. Records are kept for <strong>30 days</strong> and
           then permanently deleted (DPDP Act, 2023).
-        </label>
+        </span>
       </div>
       <button class="btn btn-primary" id="submitBtn" onclick="submitCheckIn()">Check In</button>
       <button class="btn btn-secondary" onclick="goToStep(0)">← Back</button>
@@ -768,6 +775,14 @@
 
   /* ═══════════════════════════════ CHECK-IN ════════════════════════════════ */
   let currentStep = 0;
+  let _consentChecked = false;
+
+  function toggleConsent() {
+    _consentChecked = !_consentChecked;
+    $('consentWrap').classList.toggle('consent-checked', _consentChecked);
+    $('consentBox').textContent = _consentChecked ? '✓' : '';
+    $('consentWrap').classList.remove('consent-error');
+  }
 
   function goToStep(n) {
     if (n === 1 && !validateStep0()) return;
@@ -816,7 +831,7 @@
       if (!valid) ok = false;
     });
     if (!ok) { showToast('Please fill in all required fields.', 'error'); return false; }
-    if (!$('consent').checked) {
+    if (!_consentChecked) {
       $('consentWrap').classList.add('consent-error');
       showToast('Please accept the data consent to continue.', 'error');
       return false;
@@ -896,8 +911,9 @@
     $('platePreviewWrap').style.display = 'none';
     $('platePreview').src = '';
     const sb = $('scanBtn'); if (sb) { sb.textContent = '📷'; sb.classList.remove('ocr-busy'); sb.disabled = false; }
-    $('consent').checked = false;
-    $('consentWrap').classList.remove('consent-error');
+    _consentChecked = false;
+    $('consentBox').textContent = '';
+    $('consentWrap').classList.remove('consent-error', 'consent-checked');
     $('submitBtn').disabled = false; $('submitBtn').innerHTML = 'Check In';
     currentStep = 0;
     showKiosk();
@@ -1214,10 +1230,6 @@
   document.querySelectorAll('input,select').forEach(el =>
     el.addEventListener('input', () => el.classList.remove('error'))
   );
-  $('consent').addEventListener('change', () =>
-    $('consentWrap').classList.remove('consent-error')
-  );
-
   window.addEventListener('load', () => {
     buildQR();
     $('progressBar').style.display = 'none';
