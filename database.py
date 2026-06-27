@@ -3,27 +3,27 @@ from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import urlparse, unquote
 
-# DATABASE_URL can come from Streamlit secrets (cloud) or env var (local).
-# Unset → SQLite is used automatically.
-def _get_db_url():
+_DB_PATH = Path(__file__).parent / "reception.db"
+
+
+def _get_db_url() -> str | None:
+    """Called at runtime (not import time) so st.secrets is always ready."""
     try:
         import streamlit as st
-        return st.secrets.get("DATABASE_URL") or os.getenv("DATABASE_URL")
+        url = st.secrets.get("DATABASE_URL")
+        if url:
+            return str(url)
     except Exception:
-        return os.getenv("DATABASE_URL")
+        pass
+    return os.getenv("DATABASE_URL")
 
-_DATABASE_URL = _get_db_url()
-_DB_PATH = Path(__file__).parent / "reception.db"
-_PG = bool(_DATABASE_URL)
-
-
-# ── Connection helpers ────────────────────────────────────────────────────────
 
 def _connect():
-    if _PG:
+    db_url = _get_db_url()
+    if db_url:
         import psycopg2
         import psycopg2.extras
-        parsed = urlparse(_DATABASE_URL)
+        parsed = urlparse(db_url)
         conn = psycopg2.connect(
             host=parsed.hostname,
             port=parsed.port or 5432,
@@ -33,35 +33,35 @@ def _connect():
             sslmode="require",
         )
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        return conn, cur, True
     else:
         import sqlite3
         conn = sqlite3.connect(_DB_PATH)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-    return conn, cur
+        return conn, cur, False
 
 
-def _sql(q: str) -> str:
-    """Translate SQLite dialect to PostgreSQL when needed."""
-    if _PG:
+def _sql(q: str, pg: bool) -> str:
+    if pg:
         q = q.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
         q = q.replace("?", "%s")
     return q
 
 
 def _run(query: str, params=()):
-    conn, cur = _connect()
+    conn, cur, pg = _connect()
     try:
-        cur.execute(_sql(query), params)
+        cur.execute(_sql(query, pg), params)
         conn.commit()
     finally:
         conn.close()
 
 
 def _fetch(query: str, params=()) -> list[dict]:
-    conn, cur = _connect()
+    conn, cur, pg = _connect()
     try:
-        cur.execute(_sql(query), params)
+        cur.execute(_sql(query, pg), params)
         return [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
