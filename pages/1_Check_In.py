@@ -1,3 +1,7 @@
+import re
+from datetime import datetime
+from pathlib import Path
+
 import streamlit as st
 from database import (
     init_db, check_in_visitor,
@@ -19,6 +23,37 @@ PURPOSES = [
     "Document Submission", "Interview", "Delivery", "Maintenance", "Other",
 ]
 
+# ── Visitor badge (shown after confirmation) ──────────────────────────────────
+def show_badge(v: dict):
+    issued = datetime.now().strftime("%d %b %Y · %I:%M %p")
+    logo_path = Path(__file__).parent.parent / "mobile" / "logo.png"
+
+    with st.container(border=True):
+        col_logo, col_hdr = st.columns([1, 5])
+        if logo_path.exists():
+            col_logo.image(str(logo_path), width=64)
+        with col_hdr:
+            st.markdown("**🎫 VISITOR PASS**")
+            st.caption(f"Issued: {issued}")
+
+        st.markdown(f"## {v['name']}")
+        st.divider()
+
+        c1, c2 = st.columns(2)
+        c1.markdown(f"**⏰ Time In**  \n{v.get('check_in', '—')}")
+        c2.markdown(f"**🏢 Department**  \n{v.get('department', '—')}")
+        c1.markdown(f"**🤝 Host**  \n{v.get('host', '—')}")
+        c2.markdown(f"**📋 Purpose**  \n{v.get('purpose', '—')}")
+
+        st.caption("✔  Valid for today only")
+        if st.button("✕  Clear badge", key="clear_badge"):
+            del st.session_state["badge_visitor"]
+            st.rerun()
+
+if st.session_state.get("badge_visitor"):
+    show_badge(st.session_state["badge_visitor"])
+    st.divider()
+
 # ── Confirm pending visitors (mobile self-check-in) ───────────────────────────
 pending = get_pending_visitors()
 if pending:
@@ -37,7 +72,7 @@ if pending:
             else:
                 visitor = confirm_visitor_by_code(code_input.strip())
                 if visitor:
-                    st.success(f"✅ **{visitor['name']}** confirmed — now checked in!")
+                    st.session_state["badge_visitor"] = visitor
                     st.rerun()
                 else:
                     st.error("Code not found or already confirmed.")
@@ -57,9 +92,9 @@ st.divider()
 with st.form("checkin_form", clear_on_submit=True):
     st.subheader("Visitor Details")
     col1, col2 = st.columns(2)
-    name = col1.text_input("Full Name *")
-    phone = col2.text_input("Phone Number *")
-    email = col1.text_input("Email (optional)")
+    name         = col1.text_input("Full Name *")
+    phone        = col2.text_input("Phone Number *")
+    email        = col1.text_input("Email (optional)")
     organization = col2.text_input("Organization / Institution (optional)")
     vehicle_number = st.text_input(
         "Vehicle Number (optional)",
@@ -69,9 +104,9 @@ with st.form("checkin_form", clear_on_submit=True):
 
     st.subheader("Visit Details")
     col3, col4 = st.columns(2)
-    purpose = col3.selectbox("Purpose of Visit *", PURPOSES)
+    purpose    = col3.selectbox("Purpose of Visit *", PURPOSES)
     department = col4.selectbox("Department to Visit *", DEPARTMENTS)
-    host = st.text_input("Whom to Meet (Name) *")
+    host       = st.text_input("Whom to Meet (Name) *")
 
     st.divider()
     consent = st.checkbox(
@@ -82,7 +117,6 @@ with st.form("checkin_form", clear_on_submit=True):
     submitted = st.form_submit_button("Check In", type="primary", use_container_width=True)
 
 if submitted:
-    import re
     phone_digits = re.sub(r'\D', '', phone)
     if not name.strip():
         st.error("Visitor name is required.")

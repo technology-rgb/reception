@@ -313,6 +313,53 @@
       background:#f8fafc; text-align:center;
     }
 
+    /* ── Visitor badge overlay ── */
+    .badge-overlay {
+      position:fixed; inset:0; z-index:250;
+      background:rgba(0,0,0,0.65); display:none;
+      align-items:center; justify-content:center; padding:16px;
+    }
+    .badge-overlay.active { display:flex; }
+    .badge-card {
+      background:#fff; border-radius:18px; width:100%; max-width:360px;
+      overflow:hidden; box-shadow:0 24px 64px rgba(0,0,0,0.35);
+    }
+    .badge-top {
+      background:var(--primary); padding:18px 20px 16px;
+      text-align:center;
+    }
+    .badge-top-logo {
+      display:inline-block; background:#fff; border-radius:10px;
+      padding:6px 18px; margin-bottom:8px;
+    }
+    .badge-top-logo img { height:44px; width:auto; display:block; }
+    .badge-title-row { color:#fff; font-size:11px; letter-spacing:3px; font-weight:800; opacity:0.92; }
+    .badge-issued    { color:rgba(255,255,255,0.72); font-size:11px; margin-top:2px; }
+    .badge-body { padding:20px; }
+    .badge-visitor-name {
+      font-size:22px; font-weight:800; color:var(--text);
+      text-align:center; margin-bottom:18px; line-height:1.25;
+    }
+    .badge-table {
+      width:100%; border:1.5px solid var(--border); border-radius:10px;
+      overflow:hidden; border-collapse:collapse; font-size:13px;
+      margin-bottom:14px;
+    }
+    .badge-table tr { border-bottom:1px solid var(--border); }
+    .badge-table tr:last-child { border-bottom:none; }
+    .badge-table td { padding:8px 12px; }
+    .badge-table td:first-child {
+      color:var(--muted); font-size:10px; font-weight:700;
+      text-transform:uppercase; letter-spacing:0.5px; width:90px;
+    }
+    .badge-table td:last-child { font-weight:600; color:var(--text); }
+    .badge-valid {
+      text-align:center; font-size:10px; font-weight:700;
+      letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);
+      background:#f8fafc; border-radius:6px; padding:6px;
+    }
+    .badge-actions { padding:0 20px 20px; display:flex; gap:8px; }
+
     /* ── Camera scan overlay ── */
     .scan-overlay {
       position:fixed; inset:0; z-index:200;
@@ -671,6 +718,32 @@
     <span>Admin</span>
   </button>
 </nav>
+
+<!-- ── Visitor badge overlay ── -->
+<div class="badge-overlay" id="badgeOverlay">
+  <div class="badge-card">
+    <div class="badge-top">
+      <div class="badge-top-logo">
+        <img src="logo.png" alt="Avantika University">
+      </div>
+      <div class="badge-title-row">VISITOR PASS</div>
+      <div class="badge-issued" id="badgeIssued"></div>
+    </div>
+    <div class="badge-body">
+      <div class="badge-visitor-name" id="badgeName"></div>
+      <table class="badge-table">
+        <tr><td>Time In</td>    <td id="badgeTime"></td></tr>
+        <tr><td>Host</td>       <td id="badgeHost"></td></tr>
+        <tr><td>Department</td> <td id="badgeDept"></td></tr>
+        <tr><td>Purpose</td>    <td id="badgePurpose"></td></tr>
+      </table>
+      <div class="badge-valid">✔ Valid for Today Only</div>
+    </div>
+    <div class="badge-actions">
+      <button class="btn btn-primary" onclick="closeBadge()" style="margin-top:0">Done</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Camera scan overlay ── -->
 <div class="scan-overlay" id="scanOverlay">
@@ -1072,13 +1145,32 @@
     }
   }
 
+  /* ── Visitor badge ── */
+  function showBadge(v) {
+    const d = new Date();
+    const fmt = d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+    $('badgeIssued').textContent  = fmt;
+    $('badgeName').textContent    = v.name    || '—';
+    $('badgeTime').textContent    = v.check_in || '—';
+    $('badgeHost').textContent    = v.host    || '—';
+    $('badgeDept').textContent    = v.department || '—';
+    $('badgePurpose').textContent = v.purpose || '—';
+    $('badgeOverlay').classList.add('active');
+  }
+
+  function closeBadge() {
+    $('badgeOverlay').classList.remove('active');
+    loadPending();
+  }
+
   async function confirmByCode() {
     const code = $('codeInput').value.trim();
     if (code.length !== 4) { showToast('Enter a 4-digit code.', 'error'); return; }
     const today = now().date;
     try {
       const rows = await api('GET',
-        `visitors?confirmation_code=eq.${code}&visit_date=eq.${today}&status=eq.pending&select=id,name&limit=1`
+        `visitors?confirmation_code=eq.${code}&visit_date=eq.${today}&status=eq.pending` +
+        `&select=id,name,host,department,purpose,check_in&limit=1`
       );
       if (!rows || !rows.length) {
         showToast('Code not found or already confirmed.', 'error');
@@ -1087,8 +1179,7 @@
       const v = rows[0];
       await api('PATCH', `visitors?id=eq.${v.id}`, { status: 'inside' });
       $('codeInput').value = '';
-      showToast(`${v.name} confirmed and checked in! ✓`, 'success');
-      loadPending();
+      showBadge(v);
     } catch(e) {
       showToast('Confirmation failed. Try again.', 'error');
     }
@@ -1096,14 +1187,17 @@
 
   async function confirmVisitor(id, name) {
     const card = $(`pvc-${id}`);
-    const btn = card.querySelector('button');
+    const btn  = card.querySelector('button');
     btn.disabled = true; btn.textContent = '…';
     try {
       await api('PATCH', `visitors?id=eq.${id}`, { status: 'inside' });
-      card.style.opacity = '0.4';
-      card.style.pointerEvents = 'none';
-      showToast(`${name} confirmed! ✓`, 'success');
-      setTimeout(() => card.remove(), 800);
+      card.style.opacity = '0.4'; card.style.pointerEvents = 'none';
+      const rows = await api('GET',
+        `visitors?id=eq.${id}&select=id,name,host,department,purpose,check_in&limit=1`
+      );
+      setTimeout(() => card.remove(), 300);
+      if (rows && rows.length) showBadge(rows[0]);
+      else showToast(`${name} confirmed! ✓`, 'success');
     } catch(e) {
       showToast('Failed to confirm.', 'error');
       btn.disabled = false; btn.textContent = 'Confirm';
