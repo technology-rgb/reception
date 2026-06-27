@@ -290,6 +290,20 @@
       transition:background 0.15s;
     }
     .scan-btn:active { background:var(--border); }
+    .scan-btn.ocr-busy { font-size:14px; font-weight:700; color:var(--primary); }
+
+    /* ── Captured plate preview ── */
+    .plate-preview-wrap {
+      display:none; border-radius:8px; overflow:hidden;
+      border:1.5px solid var(--border); margin-bottom:8px;
+    }
+    .plate-preview-wrap img {
+      width:100%; max-height:68px; object-fit:cover; display:block;
+    }
+    .plate-preview-label {
+      font-size:10px; color:var(--muted); padding:3px 8px;
+      background:#f8fafc; text-align:center;
+    }
 
     /* ── Camera scan overlay ── */
     .scan-overlay {
@@ -467,12 +481,15 @@
       </div>
       <div class="field">
         <label>Vehicle Number <span class="opt">(optional)</span></label>
+        <div class="plate-preview-wrap" id="platePreviewWrap">
+          <img id="platePreview" alt="Captured plate" />
+          <div class="plate-preview-label">Tap the number below to edit if needed</div>
+        </div>
         <div class="vehicle-row">
           <input type="text" id="vehicleNumber" placeholder="e.g. MP 09 AB 1234"
                  autocomplete="off" />
-          <button type="button" class="scan-btn" onclick="scanPlate()" title="Scan number plate">
-            📷
-          </button>
+          <button type="button" id="scanBtn" class="scan-btn"
+                  onclick="scanPlate()" title="Scan number plate">📷</button>
         </div>
       </div>
       <button class="btn btn-primary" onclick="goToStep(1)">Next →</button>
@@ -875,6 +892,9 @@
     });
     ['department','purpose'].forEach(id => { $(id).selectedIndex = 0; $(id).classList.remove('error'); });
     $('vehicleNumber').value = '';
+    $('platePreviewWrap').style.display = 'none';
+    $('platePreview').src = '';
+    const sb = $('scanBtn'); if (sb) { sb.textContent = '📷'; sb.classList.remove('ocr-busy'); sb.disabled = false; }
     $('consent').checked = false;
     $('consentWrap').classList.remove('consent-error');
     $('submitBtn').disabled = false; $('submitBtn').innerHTML = 'Check In';
@@ -1075,14 +1095,93 @@
     }
   }
 
-  /* ── Init ── */
   /* ═══════════════════════════ NUMBER PLATE SCAN ══════════════════════════ */
   let _scanStream = null;
 
+  /* Camera opens IMMEDIATELY — no waiting for Tesseract */
   async function scanPlate() {
-    // Load Tesseract.js lazily (only on first scan)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showToast('Camera not supported on this browser. Please type manually.', 'error');
+      return;
+    }
+    try {
+      _scanStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      $('scanVideo').srcObject = _scanStream;
+      $('scanOverlay').classList.add('active');
+    } catch (e) {
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        showToast('Camera permission denied. Allow it in browser settings and try again.', 'error');
+      } else if (e.name === 'NotFoundError') {
+        showToast('No camera found on this device.', 'error');
+      } else {
+        showToast('Camera unavailable. Please type the plate manually.', 'error');
+      }
+    }
+  }
+
+  async function captureAndScan() {
+    const video  = $('scanVideo');
+    const canvas = $('scanCanvas');
+
+    // Ensure video has started
+    if (!video.videoWidth) {
+      showToast('Camera still starting — wait a moment and try again.', '');
+      return;
+    }
+
+    // 1. Draw frame immediately
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    // 2. Show photo thumbnail RIGHT AWAY (useful even without OCR)
+    $('platePreview').src = canvas.toDataURL('image/jpeg', 0.92);
+    $('platePreviewWrap').style.display = 'block';
+
+    // 3. Close camera — user doesn't need to wait anymore
+    closeScan();
+    $('vehicleNumber').focus();
+    showToast('Photo captured — reading plate in background…', '');
+
+    // Mark scan button busy
+    const btn = $('scanBtn');
+    btn.textContent = '⏳'; btn.classList.add('ocr-busy'); btn.disabled = true;
+
+    // 4. Run OCR in background with a 30s timeout
+    try {
+      const plate = await Promise.race([
+        _runOCR(canvas),
+        new Promise(r => setTimeout(() => r(null), 30000)),
+      ]);
+
+      btn.textContent = '📷'; btn.classList.remove('ocr-busy'); btn.disabled = false;
+
+      if (plate) {
+        $('vehicleNumber').value = plate;
+        showToast('Plate detected — verify and edit if needed.', 'success');
+      } else {
+        showToast('Auto-read failed. Photo shown above — type plate below.', '');
+      }
+    } catch (_) {
+      btn.textContent = '📷'; btn.classList.remove('ocr-busy'); btn.disabled = false;
+      showToast('OCR unavailable. Photo shown above — type plate below.', '');
+    }
+  }
+
+  async function _runOCR(fullCanvas) {
+    // Crop to the horizontal centre strip (where the plate sits in the scan frame)
+    const cw = Math.round(fullCanvas.width  * 0.86);
+    const ch = Math.round(fullCanvas.height * 0.30);
+    const cx = Math.round((fullCanvas.width  - cw) / 2);
+    const cy = Math.round((fullCanvas.height - ch) / 2);
+    const crop = document.createElement('canvas');
+    crop.width = cw; crop.height = ch;
+    crop.getContext('2d').drawImage(fullCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
+
+    // Load Tesseract.js if not already present
     if (!window.Tesseract) {
-      showToast('Loading OCR engine…', '');
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
         s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js';
@@ -1090,75 +1189,27 @@
         document.head.appendChild(s);
       });
     }
-    try {
-      _scanStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      $('scanVideo').srcObject = _scanStream;
-      $('scanOverlay').classList.add('active');
-    } catch (e) {
-      showToast('Camera access denied. Please type the plate manually.', 'error');
-    }
-  }
 
-  async function captureAndScan() {
-    const video  = $('scanVideo');
-    const canvas = $('scanCanvas');
-    const btn    = $('captureBtn');
-    const status = $('scanStatus');
+    // Use the simple one-shot API — no manual worker lifecycle
+    const { data: { text } } = await Tesseract.recognize(crop, 'eng', { logger: () => {} });
 
-    btn.disabled = true;
-    btn.textContent = '⏳ Reading…';
-    status.textContent = 'Processing image…';
-
-    // Draw full frame
-    canvas.width  = video.videoWidth  || 640;
-    canvas.height = video.videoHeight || 480;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-
-    // Crop to the centre strip where the plate should be
-    const cropW = Math.round(canvas.width  * 0.84);
-    const cropH = Math.round(canvas.height * 0.32);
-    const cropX = Math.round((canvas.width  - cropW) / 2);
-    const cropY = Math.round((canvas.height - cropH) / 2);
-    const crop  = document.createElement('canvas');
-    crop.width  = cropW; crop.height = cropH;
-    crop.getContext('2d').drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-
-    try {
-      const worker = await Tesseract.createWorker('eng');
-      await worker.setParameters({ tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ' });
-      const { data: { text } } = await worker.recognize(crop);
-      await worker.terminate();
-
-      const clean = text.toUpperCase().replace(/[^A-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
-      // Match Indian plate pattern: AB 12 CD 1234  or  BH series 23 BH 1234 AA
-      const m = clean.match(/[A-Z]{2}\s*\d{2}\s*[A-Z]{1,3}\s*\d{1,4}/) ||
-                clean.match(/\d{2}\s*[A-Z]{2}\s*\d{4}\s*[A-Z]{2}/);
-      const detected = m ? m[0].replace(/\s+/g, ' ').trim() : clean.substring(0, 20);
-
-      closeScan();
-      if (detected) {
-        $('vehicleNumber').value = detected;
-        showToast('Plate detected — please verify before proceeding.', 'success');
-      } else {
-        showToast('Could not read plate clearly. Please type it manually.', 'error');
-      }
-    } catch (e) {
-      closeScan();
-      showToast('Scan failed. Please type manually.', 'error');
-    }
+    const clean = text.toUpperCase().replace(/[^A-Z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    // Standard Indian plate: MH 12 AB 1234 — BH series: 23 BH 1234 AA
+    const m = clean.match(/[A-Z]{2}\s*\d{2}\s*[A-Z]{1,3}\s*\d{4}/) ||
+              clean.match(/\d{2}\s*[A-Z]{2}\s*\d{4}\s*[A-Z]{2}/);
+    return m ? m[0].replace(/\s+/g, ' ').trim() : null;
   }
 
   function closeScan() {
     if (_scanStream) { _scanStream.getTracks().forEach(t => t.stop()); _scanStream = null; }
-    $('scanVideo').srcObject = null;
+    const v = $('scanVideo'); if (v) v.srcObject = null;
     $('scanOverlay').classList.remove('active');
-    $('captureBtn').disabled = false;
-    $('captureBtn').textContent = '📷 Capture';
-    $('scanStatus').textContent = '';
+    const cb = $('captureBtn');
+    if (cb) { cb.disabled = false; cb.textContent = '📷 Capture'; }
+    const st = $('scanStatus'); if (st) st.textContent = '';
   }
 
+  /* ── Init ── */
   document.querySelectorAll('input,select').forEach(el =>
     el.addEventListener('input', () => el.classList.remove('error'))
   );
@@ -1166,7 +1217,6 @@
     $('consentWrap').classList.remove('consent-error')
   );
 
-  // Build QR on load; hide progress bar (kiosk is default)
   window.addEventListener('load', () => {
     buildQR();
     $('progressBar').style.display = 'none';
