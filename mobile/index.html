@@ -278,6 +278,15 @@
       font-size:11px; color:var(--muted); margin-top:4px;
     }
 
+    /* ── Returning visitor banner ── */
+    .returning-banner {
+      display: none;
+      background: #f0fdf4; border: 1.5px solid #86efac;
+      border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;
+      font-size: 13px; color: #166534; line-height: 1.5;
+    }
+    .returning-banner strong { color: #15803d; }
+
     /* ── Vehicle scan button ── */
     .vehicle-row { display:flex; gap:8px; }
     .vehicle-row input { flex:1; text-transform:uppercase; }
@@ -470,6 +479,9 @@
     <div class="step card" id="step0">
       <div class="step-title">Who are you?</div>
       <div class="step-subtitle">Step 1 of 2 — Your personal details</div>
+      <div class="returning-banner" id="returningBanner">
+        👋 Welcome back, <strong id="returningName"></strong>! Your details have been pre-filled — please verify before continuing.
+      </div>
       <div class="field">
         <label>Full Name <span class="req">*</span></label>
         <input type="text" id="name" placeholder="e.g. Rahul Sharma" autocomplete="name" />
@@ -477,7 +489,7 @@
       <div class="field">
         <label>Phone Number <span class="req">*</span></label>
         <input type="tel" id="phone" placeholder="e.g. 9876543210" inputmode="numeric"
-               maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')" />
+               maxlength="10" oninput="onPhoneInput(this)" />
       </div>
       <div class="field">
         <label>Email <span class="opt">(optional)</span></label>
@@ -806,6 +818,42 @@
     }
   }
 
+  /* ── Returning visitor auto-fill ────────────────────────── */
+  let _profileTimer = null;
+
+  function onPhoneInput(el) {
+    el.value = el.value.replace(/\D/g, '');
+    $('returningBanner').style.display = 'none';
+    clearTimeout(_profileTimer);
+    if (/^[6-9]\d{9}$/.test(el.value)) {
+      _profileTimer = setTimeout(() => lookupReturningVisitor(el.value), 400);
+    }
+  }
+
+  async function lookupReturningVisitor(phone) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_visitor_profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify({ p_phone: phone }),
+      });
+      if (!res.ok) return;
+      const rows = await res.json();
+      if (!rows || rows.length === 0) return;
+      const { v_name, v_email, v_org } = rows[0];
+      if (!v_name) return;
+      $('name').value         = v_name  || '';
+      $('email').value        = v_email || '';
+      $('organization').value = v_org   || '';
+      $('returningName').textContent    = v_name;
+      $('returningBanner').style.display = 'block';
+    } catch (_) {}
+  }
+
   function validateStep0() {
     let ok = true;
 
@@ -914,6 +962,8 @@
     });
     ['department','purpose'].forEach(id => { $(id).selectedIndex = 0; $(id).classList.remove('error'); });
     $('vehicleNumber').value = '';
+    clearTimeout(_profileTimer);
+    $('returningBanner').style.display = 'none';
     $('platePreviewWrap').style.display = 'none';
     $('platePreview').src = '';
     const sb = $('scanBtn'); if (sb) { sb.textContent = '📷'; sb.classList.remove('ocr-busy'); sb.disabled = false; }
