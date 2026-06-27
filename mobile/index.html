@@ -1192,9 +1192,17 @@
   }
 
   /* ── Visitor QR pass ── */
-  function makeBadgeURL(id, token) {
+  function makeBadgeURL(v) {
     const base = window.location.origin + window.location.pathname;
-    return `${base}?badge=${id}&t=${encodeURIComponent(token)}`;
+    const p = new URLSearchParams({
+      badge: v.id,
+      n: v.name        || '',
+      h: v.host        || '',
+      d: v.department  || '',
+      p: v.purpose     || '',
+      i: v.check_in    || '',
+    });
+    return `${base}?${p.toString()}`;
   }
 
   function showBadge(v) {
@@ -1205,7 +1213,7 @@
     const qrEl = $('badgeQR');
     qrEl.innerHTML = '';
     new QRCode(qrEl, {
-      text: makeBadgeURL(v.id, v.confirmation_code),
+      text: makeBadgeURL(v),
       width: 192, height: 192,
       colorDark: '#000000', colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.M,
@@ -1220,8 +1228,7 @@
   }
 
   /* ── Badge display page (visitor's phone, opened via QR scan) ── */
-  async function loadBadgeMode() {
-    /* Hide all normal app chrome */
+  function loadBadgeMode() {
     document.querySelector('.header').style.display      = 'none';
     document.querySelector('.progress').style.display    = 'none';
     document.querySelector('.scroll-area').style.display = 'none';
@@ -1233,36 +1240,16 @@
     $('bdDate').textContent = new Date().toLocaleDateString('en-IN',
       { weekday:'short', day:'numeric', month:'short', year:'numeric' });
 
-    const params = new URLSearchParams(window.location.search);
-    const id    = params.get('badge');
-    const token = params.get('t');
-    const today = new Date().toISOString().slice(0, 10);
+    const p = new URLSearchParams(window.location.search);
 
-    try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/visitors` +
-        `?id=eq.${id}&confirmation_code=eq.${encodeURIComponent(token)}` +
-        `&visit_date=eq.${today}` +
-        `&select=name,host,department,purpose,check_in`,
-        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
-      );
-      const rows = await res.json();
+    $('bdName').textContent    = p.get('n') || '—';
+    $('bdTime').textContent    = p.get('i') || '—';
+    $('bdHost').textContent    = p.get('h') || '—';
+    $('bdDept').textContent    = p.get('d') || '—';
+    $('bdPurpose').textContent = p.get('p') || '—';
 
-      if (!rows || !rows.length) throw new Error('not found');
-
-      const v = rows[0];
-      $('bdName').textContent    = v.name       || '—';
-      $('bdTime').textContent    = v.check_in   || '—';
-      $('bdHost').textContent    = v.host       || '—';
-      $('bdDept').textContent    = v.department || '—';
-      $('bdPurpose').textContent = v.purpose    || '—';
-
-      $('bdLoader').style.display  = 'none';
-      $('bdContent').style.display = 'block';
-    } catch (_) {
-      $('bdLoader').style.display = 'none';
-      $('bdError').style.display  = 'block';
-    }
+    $('bdLoader').style.display  = 'none';
+    $('bdContent').style.display = 'block';
   }
 
   async function confirmByCode() {
@@ -1511,7 +1498,7 @@
   );
   window.addEventListener('load', () => {
     const p = new URLSearchParams(window.location.search);
-    if (p.get('badge') && p.get('t')) { loadBadgeMode(); return; }
+    if (p.get('badge')) { loadBadgeMode(); return; }
     buildQR();
     $('progressBar').style.display = 'none';
   });
