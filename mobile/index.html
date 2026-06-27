@@ -381,7 +381,8 @@
       </div>
       <div class="field">
         <label>Phone Number <span class="req">*</span></label>
-        <input type="tel" id="phone" placeholder="e.g. 9876543210" inputmode="tel" />
+        <input type="tel" id="phone" placeholder="e.g. 9876543210" inputmode="numeric"
+               maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')" />
       </div>
       <div class="field">
         <label>Email <span class="opt">(optional)</span></label>
@@ -660,12 +661,22 @@
 
   function validateStep0() {
     let ok = true;
-    ['name','phone'].forEach(id => {
-      const el = $(id);
-      const valid = el.value.trim().length > 0;
-      el.classList.toggle('error', !valid);
-      if (!valid) ok = false;
-    });
+
+    if (!$('name').value.trim()) {
+      $('name').classList.add('error');
+      ok = false;
+    }
+
+    const ph = $('phone').value.trim();
+    if (!ph) {
+      $('phone').classList.add('error');
+      ok = false;
+    } else if (!/^[6-9]\d{9}$/.test(ph)) {
+      $('phone').classList.add('error');
+      showToast('Enter a valid 10-digit mobile number starting with 6–9.', 'error');
+      return false;
+    }
+
     if (!ok) showToast('Please fill in Name and Phone.', 'error');
     return ok;
   }

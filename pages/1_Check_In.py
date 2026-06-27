@@ -77,16 +77,20 @@ with st.form("checkin_form", clear_on_submit=True):
     submitted = st.form_submit_button("Check In", type="primary", use_container_width=True)
 
 if submitted:
+    import re
+    phone_digits = re.sub(r'\D', '', phone)
     if not name.strip():
         st.error("Visitor name is required.")
-    elif not phone.strip():
+    elif not phone_digits:
         st.error("Phone number is required.")
+    elif not re.fullmatch(r'[6-9]\d{9}', phone_digits):
+        st.error("Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.")
     elif not host.strip():
         st.error("Please enter the name of the person to meet.")
     elif not consent:
         st.error("Please accept the data consent statement before checking in.")
     else:
-        existing = get_todays_active_checkin(phone)
+        existing = get_todays_active_checkin(phone_digits)
         if existing:
             status_label = "pending confirmation" if existing["status"] == "pending" else "already inside"
             st.warning(
@@ -96,7 +100,7 @@ if submitted:
             )
         else:
             check_in_visitor(
-                name, phone, email, organization, purpose, host, department,
+                name, phone_digits, email, organization, purpose, host, department,
                 consented=True, pending=False,
             )
             st.success(f"✅ **{name.strip()}** checked in successfully!")
