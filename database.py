@@ -86,13 +86,15 @@ def init_db():
             visit_date        TEXT NOT NULL,
             status            TEXT NOT NULL DEFAULT 'inside',
             consented_at      TEXT,
-            confirmation_code TEXT
+            confirmation_code TEXT,
+            vehicle_number    TEXT
         )
     """)
     # Migrate existing databases — safe to re-run, errors mean column exists
     for ddl in [
         "ALTER TABLE visitors ADD COLUMN consented_at TEXT",
         "ALTER TABLE visitors ADD COLUMN confirmation_code TEXT",
+        "ALTER TABLE visitors ADD COLUMN vehicle_number TEXT",
     ]:
         try:
             _run(ddl)
@@ -103,7 +105,7 @@ def init_db():
 # ── Write operations ──────────────────────────────────────────────────────────
 
 def check_in_visitor(name, phone, email, organization, purpose, host, department,
-                     consented=False, pending=False):
+                     consented=False, pending=False, vehicle_number=None):
     """
     Insert a visitor record.
     pending=True  → status='pending', generates a 4-digit confirmation_code, returns the code.
@@ -114,17 +116,18 @@ def check_in_visitor(name, phone, email, organization, purpose, host, department
     consented_at = now.isoformat() if consented else None
     status = "pending" if pending else "inside"
     code = str(randint(1000, 9999)) if pending else None
+    veh = vehicle_number.strip().upper() if vehicle_number and vehicle_number.strip() else None
     _run("""
         INSERT INTO visitors
           (name, phone, email, organization, purpose, host, department,
-           check_in, visit_date, status, consented_at, confirmation_code)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           check_in, visit_date, status, consented_at, confirmation_code, vehicle_number)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         name.strip(), phone.strip(), email.strip() or None,
         organization.strip() or None, purpose.strip(),
         host.strip(), department.strip(),
         now.strftime("%H:%M:%S"), now.strftime("%Y-%m-%d"),
-        status, consented_at, code,
+        status, consented_at, code, veh,
     ))
     return code
 

@@ -61,6 +61,11 @@ with st.form("checkin_form", clear_on_submit=True):
     phone = col2.text_input("Phone Number *")
     email = col1.text_input("Email (optional)")
     organization = col2.text_input("Organization / Institution (optional)")
+    vehicle_number = st.text_input(
+        "Vehicle Number (optional)",
+        placeholder="e.g. MP 09 AB 1234",
+        help="Leave blank if visitor arrived on foot.",
+    )
 
     st.subheader("Visit Details")
     col3, col4 = st.columns(2)
@@ -102,6 +107,7 @@ if submitted:
             check_in_visitor(
                 name, phone_digits, email, organization, purpose, host, department,
                 consented=True, pending=False,
+                vehicle_number=vehicle_number or None,
             )
             st.success(f"✅ **{name.strip()}** checked in successfully!")
             st.balloons()
