@@ -368,25 +368,95 @@
       background:#f8fafc; border-radius:6px; padding:6px;
     }
 
-    /* ── Visitor badge display page (opened on visitor's phone via QR) ── */
+    /* ── Visitor badge display page ── */
+    #badgeDisplayPage {
+      background: linear-gradient(160deg,#1a237e 0%,#3949ab 55%,#5c6bc0 100%);
+      align-items:center; justify-content:flex-start;
+      padding:28px 16px 40px; gap:20px;
+    }
+    .bd-card {
+      width:100%; max-width:400px;
+      background:#fff; border-radius:24px; overflow:hidden;
+      box-shadow:0 24px 64px rgba(0,0,0,0.35),0 4px 16px rgba(0,0,0,0.15);
+    }
     .bd-top {
-      background:var(--primary); padding:24px 20px 20px; text-align:center;
+      background:linear-gradient(135deg,#1a237e 0%,#283593 100%);
+      padding:28px 24px 22px; text-align:center; position:relative; overflow:hidden;
+    }
+    .bd-top::before {
+      content:''; position:absolute; top:-40px; right:-40px;
+      width:140px; height:140px; background:rgba(255,255,255,0.07); border-radius:50%;
+    }
+    .bd-top::after {
+      content:''; position:absolute; bottom:-30px; left:-30px;
+      width:100px; height:100px; background:rgba(255,255,255,0.05); border-radius:50%;
     }
     .bd-logo-wrap {
-      display:inline-block; background:#fff; border-radius:10px;
-      padding:6px 18px; margin-bottom:10px;
+      display:inline-block; background:#fff; border-radius:12px;
+      padding:8px 22px; margin-bottom:12px; position:relative; z-index:1;
     }
-    .bd-logo-wrap img { height:48px; width:auto; display:block; }
+    .bd-logo-wrap img { height:52px; width:auto; display:block; }
     .bd-title {
-      color:#fff; font-size:11px; letter-spacing:4px; font-weight:800; opacity:0.9;
+      color:#fff; font-size:12px; letter-spacing:5px; font-weight:800;
+      opacity:0.95; position:relative; z-index:1;
     }
-    .bd-date { color:rgba(255,255,255,0.72); font-size:11px; margin-top:3px; }
-    .bd-body { padding:24px 20px; }
+    .bd-date { color:rgba(255,255,255,0.75); font-size:12px; margin-top:5px; position:relative; z-index:1; }
+    .bd-accent {
+      height:5px;
+      background:linear-gradient(90deg,#ff6f00 0%,#ffa000 50%,#ff6f00 100%);
+    }
+    .bd-name-section {
+      padding:26px 24px 18px; text-align:center;
+      border-bottom:1px solid #f0f2f8;
+    }
+    .bd-visitor-label {
+      font-size:10px; font-weight:800; letter-spacing:3px;
+      color:var(--muted); text-transform:uppercase; margin-bottom:10px;
+    }
     .bd-name {
-      font-size:26px; font-weight:800; color:var(--text);
-      text-align:center; margin-bottom:20px; line-height:1.25;
+      font-size:30px; font-weight:800; color:#1a1a2e;
+      line-height:1.2; word-break:break-word;
     }
-    .bd-loader { text-align:center; color:var(--muted); padding:40px 0; font-size:14px; }
+    .bd-details { padding:8px 24px 4px; }
+    .bd-row {
+      display:flex; align-items:flex-start; padding:13px 0;
+      border-bottom:1px solid #f5f7ff;
+    }
+    .bd-row:last-child { border-bottom:none; }
+    .bd-row-icon { font-size:18px; margin-right:14px; flex-shrink:0; margin-top:2px; }
+    .bd-row-content { flex:1; }
+    .bd-row-label {
+      font-size:10px; font-weight:700; color:var(--muted);
+      text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;
+    }
+    .bd-row-value { font-size:16px; font-weight:600; color:#1a1a2e; }
+    .bd-valid-strip {
+      margin:16px 24px 20px;
+      background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:10px;
+      display:flex; align-items:center; justify-content:center; gap:8px; padding:11px 16px;
+    }
+    .bd-valid-icon { font-size:18px; }
+    .bd-valid-text {
+      font-size:12px; font-weight:800; color:#15803d; letter-spacing:1px;
+    }
+    .bd-footer {
+      background:#f8f9ff; padding:14px 24px;
+      display:flex; justify-content:space-between; align-items:center;
+      border-top:1px solid #e8eaf6;
+    }
+    .bd-footer-brand { font-size:10px; color:var(--muted); font-weight:700; letter-spacing:0.5px; }
+    .bd-footer-id { font-size:10px; color:var(--muted); font-family:monospace; }
+    .bd-save-btn {
+      width:100%; max-width:400px;
+      background:rgba(255,255,255,0.18); border:2px solid rgba(255,255,255,0.45);
+      color:#fff; border-radius:16px; padding:16px 24px;
+      font-size:16px; font-weight:700; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      backdrop-filter:blur(12px); transition:background 0.15s;
+    }
+    .bd-save-btn:active { background:rgba(255,255,255,0.3); }
+    .bd-save-btn:disabled { opacity:0.6; cursor:default; }
+    .bd-loader { text-align:center; color:var(--muted); padding:48px 0; font-size:15px; }
 
     /* ── Camera scan overlay ── */
     .scan-overlay {
@@ -767,28 +837,81 @@
 </div>
 
 <!-- ── Visitor badge display (opened when visitor scans QR) ── -->
-<div id="badgeDisplayPage" style="display:none;min-height:100dvh;display:none;flex-direction:column">
-  <div class="bd-top">
-    <div class="bd-logo-wrap"><img src="logo.png" alt="Avantika University"></div>
-    <div class="bd-title">VISITOR PASS</div>
-    <div class="bd-date" id="bdDate"></div>
+<div id="badgeDisplayPage" style="display:none;min-height:100dvh;flex-direction:column">
+
+  <!-- Loader (shown while populating from URL params) -->
+  <div id="bdLoader" class="bd-loader" style="color:rgba(255,255,255,0.8);padding-top:80px">
+    Loading your pass…
   </div>
-  <div class="bd-body">
-    <div id="bdLoader" class="bd-loader">Loading your pass…</div>
-    <div id="bdContent" style="display:none">
+
+  <!-- The card (captured by html2canvas for save) -->
+  <div class="bd-card" id="bdCard" style="display:none">
+    <div class="bd-top">
+      <div class="bd-logo-wrap"><img src="logo.png" alt="Avantika University"></div>
+      <div class="bd-title">V I S I T O R &nbsp; P A S S</div>
+      <div class="bd-date" id="bdDate"></div>
+    </div>
+    <div class="bd-accent"></div>
+
+    <div class="bd-name-section">
+      <div class="bd-visitor-label">Authorised Visitor</div>
       <div class="bd-name" id="bdName"></div>
-      <table class="badge-table">
-        <tr><td>Time In</td>    <td id="bdTime"></td></tr>
-        <tr><td>Host</td>       <td id="bdHost"></td></tr>
-        <tr><td>Department</td> <td id="bdDept"></td></tr>
-        <tr><td>Purpose</td>    <td id="bdPurpose"></td></tr>
-      </table>
-      <div class="badge-valid" style="margin-top:14px">✔ Valid for Today Only</div>
     </div>
-    <div id="bdError" style="display:none;text-align:center;color:var(--danger);padding:20px;font-weight:600">
-      This pass is invalid or has expired.
+
+    <div class="bd-details">
+      <div class="bd-row">
+        <span class="bd-row-icon">⏰</span>
+        <div class="bd-row-content">
+          <div class="bd-row-label">Check-In Time</div>
+          <div class="bd-row-value" id="bdTime"></div>
+        </div>
+      </div>
+      <div class="bd-row">
+        <span class="bd-row-icon">🤝</span>
+        <div class="bd-row-content">
+          <div class="bd-row-label">Meeting</div>
+          <div class="bd-row-value" id="bdHost"></div>
+        </div>
+      </div>
+      <div class="bd-row">
+        <span class="bd-row-icon">🏢</span>
+        <div class="bd-row-content">
+          <div class="bd-row-label">Department</div>
+          <div class="bd-row-value" id="bdDept"></div>
+        </div>
+      </div>
+      <div class="bd-row">
+        <span class="bd-row-icon">📋</span>
+        <div class="bd-row-content">
+          <div class="bd-row-label">Purpose</div>
+          <div class="bd-row-value" id="bdPurpose"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bd-valid-strip">
+      <span class="bd-valid-icon">✅</span>
+      <span class="bd-valid-text">AUTHORISED · AVANTIKA UNIVERSITY</span>
+    </div>
+
+    <div class="bd-footer">
+      <span class="bd-footer-brand">AVANTIKA UNIVERSITY · UJJAIN</span>
+      <span class="bd-footer-id" id="bdPassId"></span>
     </div>
   </div>
+
+  <!-- Save button (outside card so it won't appear in saved image) -->
+  <button class="bd-save-btn" id="bdSaveBtn" onclick="saveBadge()" style="display:none">
+    ⬇&nbsp; Save Pass to Phone
+  </button>
+
+  <!-- Error state -->
+  <div id="bdError" style="display:none;text-align:center;color:#fff;padding:40px 24px">
+    <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:8px">Pass Invalid</div>
+    <div style="font-size:14px;opacity:0.8">This pass is invalid or has expired.</div>
+  </div>
+
 </div>
 
 <!-- ── Camera scan overlay ── -->
@@ -1234,22 +1357,74 @@
     document.querySelector('.scroll-area').style.display = 'none';
     document.querySelector('nav').style.display          = 'none';
 
-    const pg = $('badgeDisplayPage');
-    pg.style.display = 'flex';
-
-    $('bdDate').textContent = new Date().toLocaleDateString('en-IN',
-      { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+    $('badgeDisplayPage').style.display = 'flex';
 
     const p = new URLSearchParams(window.location.search);
+    const name = p.get('n') || '';
 
-    $('bdName').textContent    = p.get('n') || '—';
+    if (!name) {
+      $('bdLoader').style.display = 'none';
+      $('bdError').style.display  = 'block';
+      return;
+    }
+
+    $('bdDate').textContent    = new Date().toLocaleDateString('en-IN',
+      { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    $('bdName').textContent    = name;
     $('bdTime').textContent    = p.get('i') || '—';
     $('bdHost').textContent    = p.get('h') || '—';
     $('bdDept').textContent    = p.get('d') || '—';
     $('bdPurpose').textContent = p.get('p') || '—';
+    $('bdPassId').textContent  = `PASS #${p.get('badge') || '—'}`;
 
     $('bdLoader').style.display  = 'none';
-    $('bdContent').style.display = 'block';
+    $('bdCard').style.display    = 'block';
+    $('bdSaveBtn').style.display = 'flex';
+  }
+
+  /* ── Save badge as image ── */
+  async function saveBadge() {
+    const btn = $('bdSaveBtn');
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+    try {
+      if (!window.html2canvas) {
+        await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      const canvas = await html2canvas($('bdCard'), {
+        scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+      });
+      const name     = ($('bdName').textContent || 'visitor').replace(/\s+/g, '-').toLowerCase();
+      const filename = `pass-${name}.png`;
+      const dataUrl  = canvas.toDataURL('image/png');
+
+      if (navigator.canShare) {
+        canvas.toBlob(async blob => {
+          try {
+            await navigator.share({
+              files: [new File([blob], filename, { type: 'image/png' })],
+              title: 'Visitor Pass — Avantika University',
+            });
+          } catch (_) { _download(dataUrl, filename); }
+        }, 'image/png');
+      } else {
+        _download(dataUrl, filename);
+      }
+    } catch (_) {
+      btn.textContent = 'Failed — try again';
+    } finally {
+      setTimeout(() => { btn.innerHTML = '⬇&nbsp; Save Pass to Phone'; btn.disabled = false; }, 2500);
+    }
+  }
+
+  function _download(dataUrl, filename) {
+    const a = document.createElement('a');
+    a.href = dataUrl; a.download = filename; a.click();
   }
 
   async function confirmByCode() {
