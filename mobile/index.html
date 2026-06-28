@@ -174,7 +174,7 @@
     .log-item .right span { font-size:11px; color:var(--muted); display:block; margin-top:2px; }
 
     .empty-state { text-align:center; padding:32px 0; color:var(--muted); font-size:14px; }
-    .empty-state .emoji { font-size:36px; margin-bottom:8px; }
+    .empty-state .emoji { font-size:0; line-height:0; margin-bottom:10px; display:flex; align-items:center; justify-content:center; }
 
     .search-box {
       width:100%; padding:10px 13px; border:1.5px solid var(--border);
@@ -610,12 +610,13 @@
         <img src="logo.png" alt="Avantika University" style="height:80px;width:auto;object-fit:contain;display:block">
       </div>
       <div class="qr-card">
-        <h2>👋 Welcome</h2>
+        <h2 style="display:flex;align-items:center;justify-content:center;gap:8px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Welcome</h2>
         <p>Scan the QR code with your phone to check in, or fill the form on this device.</p>
         <div id="qrCanvas"></div>
         <div class="divider">or</div>
-        <button class="btn btn-primary" onclick="showForm()" style="margin-top:0">
-          Fill form on this device →
+        <button class="btn btn-primary" onclick="showForm()" style="margin-top:0;display:inline-flex;align-items:center;justify-content:center;gap:6px">
+          Fill form on this device
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
         <p class="refresh-hint">QR refreshes automatically</p>
       </div>
@@ -626,7 +627,7 @@
       <div class="step-title">Who are you?</div>
       <div class="step-subtitle">Step 1 of 2 — Your personal details</div>
       <div class="returning-banner" id="returningBanner">
-        👋 Welcome back, <strong id="returningName"></strong>! Your details have been pre-filled — please verify before continuing.
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Welcome back, <strong id="returningName"></strong>! Your details have been pre-filled — please verify before continuing.
       </div>
       <div class="field">
         <label>Full Name <span class="req">*</span></label>
@@ -655,11 +656,11 @@
           <input type="text" id="vehicleNumber" placeholder="e.g. MP 09 AB 1234"
                  autocomplete="off" />
           <button type="button" id="scanBtn" class="scan-btn"
-                  onclick="scanPlate()" title="Scan number plate">📷</button>
+                  onclick="scanPlate()" title="Scan number plate"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="goToStep(1)">Next →</button>
-      <button class="btn btn-secondary" onclick="showKiosk()">← Show QR instead</button>
+      <button class="btn btn-primary" onclick="goToStep(1)" style="display:inline-flex;align-items:center;justify-content:center;gap:6px">Next <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      <button class="btn btn-secondary" onclick="showKiosk()" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Show QR instead</button>
     </div>
 
     <!-- Step 1: Visit details -->
@@ -705,7 +706,7 @@
         </span>
       </div>
       <button class="btn btn-primary" id="submitBtn" onclick="submitCheckIn()">Check In</button>
-      <button class="btn btn-secondary" onclick="goToStep(0)">← Back</button>
+      <button class="btn btn-secondary" onclick="goToStep(0)" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back</button>
     </div>
 
     <!-- Success -->
@@ -788,24 +789,24 @@
                    placeholder="_ _ _ _"
                    oninput="this.value=this.value.replace(/\D/g,'')"
                    onkeydown="if(event.key==='Enter')confirmByCode()" />
-            <button class="confirm-btn" onclick="confirmByCode()">✓</button>
+            <button class="confirm-btn" onclick="confirmByCode()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></button>
           </div>
           <div class="section-label">Awaiting Reception</div>
-          <div id="pendingList"><div class="empty-state"><div class="emoji">⏳</div>Loading…</div></div>
+          <div id="pendingList"><div class="empty-state"><div class="emoji"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke="var(--border)" stroke-width="1.75"/><path d="M12 3a9 9 0 0 1 9 9" stroke="var(--primary-light)" stroke-width="1.75"/></svg></div>Loading…</div></div>
         </div>
 
         <!-- Active visitors panel -->
         <div id="panel-active">
-          <input class="search-box" id="searchActive" placeholder="🔍 Search name or phone…"
+          <input class="search-box" id="searchActive" placeholder="Search name or phone…"
                  oninput="filterActive()" />
           <div class="section-label">Currently Inside</div>
-          <div id="activeList"><div class="empty-state"><div class="emoji">⏳</div>Loading…</div></div>
+          <div id="activeList"><div class="empty-state"><div class="emoji"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke="var(--border)" stroke-width="1.75"/><path d="M12 3a9 9 0 0 1 9 9" stroke="var(--primary-light)" stroke-width="1.75"/></svg></div>Loading…</div></div>
         </div>
 
         <!-- Visitor log panel -->
         <div id="panel-log" style="display:none">
           <div class="section-label">Today's Visitors</div>
-          <div id="logList"><div class="empty-state"><div class="emoji">⏳</div>Loading…</div></div>
+          <div id="logList"><div class="empty-state"><div class="emoji"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke="var(--border)" stroke-width="1.75"/><path d="M12 3a9 9 0 0 1 9 9" stroke="var(--primary-light)" stroke-width="1.75"/></svg></div>Loading…</div></div>
         </div>
       </div>
 
@@ -942,7 +943,7 @@
 
   <!-- Error state -->
   <div id="bdError" style="display:none;text-align:center;color:#fff;padding:40px 24px">
-    <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+    <div style="margin-bottom:16px"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
     <div style="font-size:20px;font-weight:800;margin-bottom:8px">Pass Invalid</div>
     <div style="font-size:14px;opacity:0.8">This pass is invalid or has expired.</div>
   </div>
@@ -952,7 +953,7 @@
 <!-- ── Camera scan overlay ── -->
 <div class="scan-overlay" id="scanOverlay">
   <div class="scan-topbar">
-    <button class="scan-close" onclick="closeScan()">✕</button>
+    <button class="scan-close" onclick="closeScan()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <span>Point camera at number plate</span>
     <div style="width:32px"></div>
   </div>
@@ -1075,10 +1076,24 @@
   let currentStep = 0;
   let _consentChecked = false;
 
+  /* ── Inline SVG icon strings for JS-generated HTML ── */
+  const _s = 'display:inline-block;vertical-align:-2px;margin-right:4px;opacity:0.65';
+  const _ic = {
+    phone:  `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="${_s}"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.18 6.18l.94-.94a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 17z"/></svg>`,
+    person: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="${_s}"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+    clock:  `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="${_s}"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>`,
+    espin:  `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke="var(--border)" stroke-width="1.75"/><path d="M12 3a9 9 0 0 1 9 9" stroke="var(--primary-light)" stroke-width="1.75"/></svg>`,
+    echeck: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-5"/></svg>`,
+    edoc:   `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 12h6M9 17h4"/></svg>`,
+    eaway:  `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+    cam:    `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+    tick:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`,
+  };
+
   function toggleConsent() {
     _consentChecked = !_consentChecked;
     $('consentWrap').classList.toggle('consent-checked', _consentChecked);
-    $('consentBox').textContent = _consentChecked ? '✓' : '';
+    $('consentBox').innerHTML = _consentChecked ? _ic.tick : '';
     $('consentWrap').classList.remove('consent-error');
   }
 
@@ -1225,9 +1240,9 @@
       $('progressBar').style.display = 'none';
       $('entryCode').textContent = code;
       $('successDetail').innerHTML = `
-        <p><strong>👤 ${payload.name}</strong></p>
-        <p>📞 ${payload.phone}</p>
-        <p>📍 ${payload.department} — ${payload.host}</p>`;
+        <p><strong>${payload.name}</strong></p>
+        <p style="color:var(--muted);font-size:13px">${_ic.phone}${payload.phone}</p>
+        <p style="color:var(--muted);font-size:13px">${_ic.person}${payload.department} — ${payload.host}</p>`;
       $('successScreen').classList.add('show');
     } catch(e) {
       showToast('Check-in failed. Try again.', 'error');
@@ -1246,9 +1261,9 @@
     $('returningBanner').style.display = 'none';
     $('platePreviewWrap').style.display = 'none';
     $('platePreview').src = '';
-    const sb = $('scanBtn'); if (sb) { sb.textContent = '📷'; sb.classList.remove('ocr-busy'); sb.disabled = false; }
+    const sb = $('scanBtn'); if (sb) { sb.innerHTML = _ic.cam; sb.classList.remove('ocr-busy'); sb.disabled = false; }
     _consentChecked = false;
-    $('consentBox').textContent = '';
+    $('consentBox').innerHTML = '';
     $('consentWrap').classList.remove('consent-error', 'consent-checked');
     $('submitBtn').disabled = false; $('submitBtn').innerHTML = 'Check In';
     currentStep = 0;
@@ -1324,23 +1339,23 @@
 
   /* ── Pending visitors ── */
   async function loadPending() {
-    $('pendingList').innerHTML = '<div class="empty-state"><div class="emoji">⏳</div>Loading…</div>';
+    $('pendingList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.espin}</div>Loading…</div>`;
     try {
       const today = now().date;
       const rows = await api('GET',
         `visitors?status=eq.pending&visit_date=eq.${today}&select=*&order=check_in.desc`
       );
       if (!rows || !rows.length) {
-        $('pendingList').innerHTML = '<div class="empty-state"><div class="emoji">✅</div>No pending check-ins.</div>';
+        $('pendingList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.echeck}</div>No pending check-ins.</div>`;
         return;
       }
       $('pendingList').innerHTML = rows.map(v => `
         <div class="visitor-card" id="pvc-${v.id}">
           <div class="info">
             <strong>${v.name}</strong>
-            <span>📞 ${v.phone}</span>
-            <span>🤝 ${v.host} · ${v.department}</span>
-            <span>🕐 Submitted ${v.check_in}</span>
+            <span>${_ic.phone}${v.phone}</span>
+            <span>${_ic.person}${v.host} · ${v.department}</span>
+            <span>${_ic.clock}Submitted ${v.check_in}</span>
           </div>
           <div style="text-align:center">
             <span class="pending-code">${v.confirmation_code}</span>
@@ -1499,7 +1514,7 @@
       );
       setTimeout(() => card.remove(), 300);
       if (rows && rows.length) showBadge(rows[0]);
-      else showToast(`${name} confirmed! ✓`, 'success');
+      else showToast(`${name} confirmed!`, 'success');
     } catch(e) {
       showToast('Failed to confirm.', 'error');
       btn.disabled = false; btn.textContent = 'Confirm';
@@ -1508,7 +1523,7 @@
 
   /* ── Active visitors ── */
   async function loadActive() {
-    $('activeList').innerHTML = '<div class="empty-state"><div class="emoji">⏳</div>Loading…</div>';
+    $('activeList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.espin}</div>Loading…</div>`;
     try {
       const today = now().date;
       activeVisitors = await api('GET',
@@ -1521,16 +1536,16 @@
 
   function renderActive(list) {
     if (!list.length) {
-      $('activeList').innerHTML = '<div class="empty-state"><div class="emoji">🏖️</div>No visitors inside right now.</div>';
+      $('activeList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.eaway}</div>No visitors inside right now.</div>`;
       return;
     }
     $('activeList').innerHTML = list.map(v => `
       <div class="visitor-card" id="vc-${v.id}">
         <div class="info">
           <strong>${v.name}</strong>
-          <span>📞 ${v.phone}</span>
-          <span>🤝 ${v.host} · ${v.department}</span>
-          <span>🕐 In at ${v.check_in}</span>
+          <span>${_ic.phone}${v.phone}</span>
+          <span>${_ic.person}${v.host} · ${v.department}</span>
+          <span>${_ic.clock}In at ${v.check_in}</span>
         </div>
         <button class="btn-sm btn-sm-danger" onclick="checkOut(${v.id},'${v.name}')">Check Out</button>
       </div>`).join('');
@@ -1553,7 +1568,7 @@
       await api('PATCH', `visitors?id=eq.${id}`, {check_out: time, status: 'left'});
       card.style.opacity = '0.4';
       card.style.pointerEvents = 'none';
-      showToast(`${name} checked out ✓`, 'success');
+      showToast(`${name} checked out`, 'success');
       activeVisitors = activeVisitors.filter(v => v.id !== id);
       setTimeout(() => { card.remove(); }, 1000);
     } catch(e) {
@@ -1564,13 +1579,13 @@
 
   /* ── Visitor log ── */
   async function loadLog() {
-    $('logList').innerHTML = '<div class="empty-state"><div class="emoji">⏳</div>Loading…</div>';
+    $('logList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.espin}</div>Loading…</div>`;
     try {
       const today = now().date;
       const rows = await api('GET',
         `visitors?visit_date=eq.${today}&select=*&order=check_in.desc&limit=50`);
       if (!rows.length) {
-        $('logList').innerHTML = '<div class="empty-state"><div class="emoji">📭</div>No visitors today.</div>';
+        $('logList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.edoc}</div>No visitors today.</div>`;
         return;
       }
       $('logList').innerHTML = rows.map(v => `
@@ -1643,7 +1658,7 @@
 
     // Mark scan button busy
     const btn = $('scanBtn');
-    btn.textContent = '⏳'; btn.classList.add('ocr-busy'); btn.disabled = true;
+    btn.innerHTML = '…'; btn.classList.add('ocr-busy'); btn.disabled = true;
 
     // 4. Run OCR in background with a 30s timeout
     try {
@@ -1652,7 +1667,7 @@
         new Promise(r => setTimeout(() => r(null), 30000)),
       ]);
 
-      btn.textContent = '📷'; btn.classList.remove('ocr-busy'); btn.disabled = false;
+      btn.innerHTML = _ic.cam; btn.classList.remove('ocr-busy'); btn.disabled = false;
 
       if (plate) {
         $('vehicleNumber').value = plate;
@@ -1661,7 +1676,7 @@
         showToast('Auto-read failed. Photo shown above — type plate below.', '');
       }
     } catch (_) {
-      btn.textContent = '📷'; btn.classList.remove('ocr-busy'); btn.disabled = false;
+      btn.innerHTML = _ic.cam; btn.classList.remove('ocr-busy'); btn.disabled = false;
       showToast('OCR unavailable. Photo shown above — type plate below.', '');
     }
   }
@@ -1701,7 +1716,7 @@
     const v = $('scanVideo'); if (v) v.srcObject = null;
     $('scanOverlay').classList.remove('active');
     const cb = $('captureBtn');
-    if (cb) { cb.disabled = false; cb.textContent = '📷 Capture'; }
+    if (cb) { cb.disabled = false; cb.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Capture`; }
     const st = $('scanStatus'); if (st) st.textContent = '';
   }
 
