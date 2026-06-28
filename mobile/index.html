@@ -174,6 +174,34 @@
     .rejected-badge { background:#fef3c7; color:#92400e; }
     .pending-badge { background:#eff6ff; color:#1d4ed8; }
 
+    /* ── Log date navigation ── */
+    .log-date-nav {
+      display:flex; align-items:center; gap:6px; margin-bottom:10px;
+    }
+    .log-date-nav input[type="date"] {
+      flex:1; padding:7px 8px; font-size:13px; text-align:center;
+      border:1.5px solid var(--border); border-radius:10px;
+      background:#fff; color:var(--text); outline:none;
+      transition:border-color 0.2s;
+    }
+    .log-date-nav input[type="date"]:focus { border-color:var(--primary-light); }
+    .log-nav-btn {
+      flex-shrink:0; width:34px; height:34px;
+      border:1.5px solid var(--border); border-radius:8px;
+      background:var(--card); cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:background 0.15s; color:var(--text);
+    }
+    .log-nav-btn:active { background:var(--bg); }
+    .log-today-btn {
+      flex-shrink:0; padding:6px 10px;
+      border:1.5px solid var(--primary); border-radius:8px;
+      background:transparent; color:var(--primary);
+      font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+      transition:all 0.15s;
+    }
+    .log-today-btn:active { background:var(--primary); color:#fff; }
+
     /* ── Log filters ── */
     .log-search-row {
       position:relative; margin-bottom:8px;
@@ -849,11 +877,22 @@
         <!-- Visitor log panel -->
         <div id="panel-log" style="display:none">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div class="section-label" style="margin-bottom:0">Today's Visitors</div>
+            <div class="section-label" style="margin-bottom:0">Visitor Log</div>
             <button onclick="downloadLog()" title="Download CSV" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);font-size:12px;font-weight:600;color:var(--primary);cursor:pointer">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Export CSV
             </button>
+          </div>
+          <!-- Date navigation -->
+          <div class="log-date-nav">
+            <button class="log-nav-btn" onclick="shiftLogDate(-1)" title="Previous day">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <input type="date" id="logDatePicker" oninput="onLogDateChange()" />
+            <button class="log-nav-btn" onclick="shiftLogDate(1)" title="Next day">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+            <button class="log-today-btn" onclick="jumpToToday()">Today</button>
           </div>
           <!-- Search -->
           <div class="log-search-row">
@@ -1395,6 +1434,7 @@
   /* ── Admin tabs ── */
   let activeVisitors = [];
   let _logRows = [];
+  let _logDate  = '';
   let _logFilter = { status: 'all' };
 
   /* Parse stored "HH:MM:SS" check_in as today's Date for age comparison */
@@ -1676,15 +1716,36 @@
   }
 
   /* ── Visitor log ── */
+  function onLogDateChange() {
+    _logDate = $('logDatePicker').value;
+    if (_logDate) loadLog();
+  }
+
+  function shiftLogDate(days) {
+    const base = _logDate || now().date;
+    const d = new Date(base + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    _logDate = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    $('logDatePicker').value = _logDate;
+    loadLog();
+  }
+
+  function jumpToToday() {
+    _logDate = now().date;
+    $('logDatePicker').value = _logDate;
+    loadLog();
+  }
+
   async function loadLog() {
+    if (!_logDate) _logDate = now().date;
+    $('logDatePicker').value = _logDate;
     $('logList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.espin}</div>Loading…</div>`;
     try {
-      const today = now().date;
       const rows = await api('GET',
-        `visitors?visit_date=eq.${today}&select=*&order=check_in.desc&limit=50`);
+        `visitors?visit_date=eq.${_logDate}&select=*&order=check_in.desc&limit=200`);
       if (!rows.length) {
         _logRows = [];
-        $('logList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.edoc}</div>No visitors today.</div>`;
+        $('logList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.edoc}</div>No visitors on ${_logDate}.</div>`;
         return;
       }
       _logRows = rows;
@@ -1752,7 +1813,7 @@
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url; a.download = `visitor-log-${now().date}.csv`; a.click();
+    a.href = url; a.download = `visitor-log-${_logDate || now().date}.csv`; a.click();
     URL.revokeObjectURL(url);
   }
 
