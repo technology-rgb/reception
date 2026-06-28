@@ -1,4 +1,4 @@
-const CACHE = 'au-visitor-v4';
+const CACHE = 'au-visitor-v5';
 const ASSETS = ['./index.html', './manifest.json', './icon-192.svg', './icon-512.svg'];
 
 self.addEventListener('install', e => {

@@ -173,6 +173,47 @@
     .left-badge { background:#f1f5f9; color:var(--muted); }
     .rejected-badge { background:#fef3c7; color:#92400e; }
     .pending-badge { background:#eff6ff; color:#1d4ed8; }
+
+    /* ── Log filters ── */
+    .log-search-row {
+      position:relative; margin-bottom:8px;
+    }
+    .log-search-row svg {
+      position:absolute; left:11px; top:50%; transform:translateY(-50%);
+      pointer-events:none; opacity:0.4;
+    }
+    .log-search-row input {
+      padding:9px 12px 9px 34px; font-size:14px; border-radius:10px;
+      border:1.5px solid var(--border); width:100%; outline:none;
+      transition:border-color 0.2s; background:#fff;
+    }
+    .log-search-row input:focus { border-color:var(--primary-light); }
+    .log-filter-pills {
+      display:flex; gap:6px; overflow-x:auto; margin-bottom:8px;
+      padding-bottom:2px; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+    }
+    .log-filter-pills::-webkit-scrollbar { display:none; }
+    .filter-pill {
+      flex-shrink:0; padding:5px 13px; border:1.5px solid var(--border);
+      border-radius:20px; background:var(--card); font-size:12px; font-weight:600;
+      color:var(--muted); cursor:pointer; transition:all 0.15s; white-space:nowrap;
+    }
+    .filter-pill.active {
+      background:var(--primary); border-color:var(--primary); color:#fff;
+    }
+    .log-dept-row {
+      position:relative; margin-bottom:12px;
+    }
+    .log-dept-row select {
+      width:100%; padding:8px 30px 8px 11px; font-size:13px; border-radius:10px;
+      border:1.5px solid var(--border); background:#fff; outline:none; color:var(--text);
+      appearance:none; -webkit-appearance:none; cursor:pointer; transition:border-color 0.2s;
+    }
+    .log-dept-row select:focus { border-color:var(--primary-light); }
+    .log-dept-row::after {
+      content:'▾'; position:absolute; right:11px; top:50%;
+      transform:translateY(-50%); color:var(--muted); pointer-events:none; font-size:12px;
+    }
     .log-item .right span { font-size:11px; color:var(--muted); display:block; margin-top:2px; }
 
     .empty-state { text-align:center; padding:32px 0; color:var(--muted); font-size:14px; }
@@ -814,6 +855,25 @@
               Export CSV
             </button>
           </div>
+          <!-- Search -->
+          <div class="log-search-row">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="logSearch" placeholder="Search name or phone…" oninput="filterLog()" />
+          </div>
+          <!-- Status pills -->
+          <div class="log-filter-pills" id="logStatusPills">
+            <button class="filter-pill active" data-status="all"      onclick="setLogStatus(this)">All</button>
+            <button class="filter-pill"        data-status="inside"   onclick="setLogStatus(this)">Inside</button>
+            <button class="filter-pill"        data-status="left"     onclick="setLogStatus(this)">Left</button>
+            <button class="filter-pill"        data-status="rejected" onclick="setLogStatus(this)">Rejected</button>
+            <button class="filter-pill"        data-status="pending"  onclick="setLogStatus(this)">Pending</button>
+          </div>
+          <!-- Department -->
+          <div class="log-dept-row">
+            <select id="logDeptFilter" onchange="filterLog()">
+              <option value="">All Departments</option>
+            </select>
+          </div>
           <div id="logList"><div class="empty-state"><div class="emoji"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke="var(--border)" stroke-width="1.75"/><path d="M12 3a9 9 0 0 1 9 9" stroke="var(--primary-light)" stroke-width="1.75"/></svg></div>Loading…</div></div>
         </div>
       </div>
@@ -1335,6 +1395,7 @@
   /* ── Admin tabs ── */
   let activeVisitors = [];
   let _logRows = [];
+  let _logFilter = { status: 'all' };
 
   /* Parse stored "HH:MM:SS" check_in as today's Date for age comparison */
   function parseCheckInMs(timeStr) {
@@ -1627,22 +1688,53 @@
         return;
       }
       _logRows = rows;
-      const statusCls   = s => s === 'inside' ? 'inside' : s === 'rejected' ? 'rejected-badge' : s === 'pending' ? 'pending-badge' : 'left-badge';
-      const statusLabel = s => s === 'inside' ? 'Inside' : s === 'rejected' ? 'Rejected' : s === 'pending' ? 'Pending' : 'Left';
-      $('logList').innerHTML = rows.map(v => `
-        <div class="log-item">
-          <div class="left">
-            <strong>${v.name}</strong>
-            <span>${v.phone} · ${v.host}</span>
-          </div>
-          <div class="right">
-            <span class="status-badge ${statusCls(v.status)}">${statusLabel(v.status)}</span>
-            <span>In: ${v.check_in}${v.check_out ? ' · Out: '+v.check_out : ''}</span>
-          </div>
-        </div>`).join('');
+      /* Populate department dropdown from actual data */
+      const depts = [...new Set(rows.map(v => v.department).filter(Boolean))].sort();
+      const dd = $('logDeptFilter');
+      const prev = dd.value;
+      dd.innerHTML = '<option value="">All Departments</option>' +
+        depts.map(d => `<option value="${d}"${d === prev ? ' selected' : ''}>${d}</option>`).join('');
+      filterLog();
     } catch(e) {
       $('logList').innerHTML = '<div class="empty-state">Failed to load.</div>';
     }
+  }
+
+  function setLogStatus(btn) {
+    document.querySelectorAll('#logStatusPills .filter-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    _logFilter.status = btn.dataset.status;
+    filterLog();
+  }
+
+  function filterLog() {
+    const q    = ($('logSearch').value || '').toLowerCase();
+    const dept = $('logDeptFilter').value;
+    const statusCls   = s => s === 'inside' ? 'inside' : s === 'rejected' ? 'rejected-badge' : s === 'pending' ? 'pending-badge' : 'left-badge';
+    const statusLabel = s => s === 'inside' ? 'Inside' : s === 'rejected' ? 'Rejected' : s === 'pending' ? 'Pending' : 'Left';
+
+    let rows = _logRows;
+    if (_logFilter.status !== 'all') rows = rows.filter(v => v.status === _logFilter.status);
+    if (dept)                        rows = rows.filter(v => v.department === dept);
+    if (q)                           rows = rows.filter(v =>
+      (v.name || '').toLowerCase().includes(q) || (v.phone || '').includes(q)
+    );
+
+    if (!rows.length) {
+      $('logList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.edoc}</div>No matching visitors.</div>`;
+      return;
+    }
+    $('logList').innerHTML = rows.map(v => `
+      <div class="log-item">
+        <div class="left">
+          <strong>${v.name}</strong>
+          <span>${v.phone} · ${v.host}</span>
+        </div>
+        <div class="right">
+          <span class="status-badge ${statusCls(v.status)}">${statusLabel(v.status)}</span>
+          <span>In: ${v.check_in}${v.check_out ? ' · Out: '+v.check_out : ''}</span>
+        </div>
+      </div>`).join('');
   }
 
   function downloadLog() {
