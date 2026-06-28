@@ -170,7 +170,9 @@
       font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600;
     }
     .inside { background:#dcfce7; color:#16a34a; }
-    .left-badge { background:#fee2e2; color:var(--danger); }
+    .left-badge { background:#f1f5f9; color:var(--muted); }
+    .rejected-badge { background:#fef3c7; color:#92400e; }
+    .pending-badge { background:#eff6ff; color:#1d4ed8; }
     .log-item .right span { font-size:11px; color:var(--muted); display:block; margin-top:2px; }
 
     .empty-state { text-align:center; padding:32px 0; color:var(--muted); font-size:14px; }
@@ -805,7 +807,13 @@
 
         <!-- Visitor log panel -->
         <div id="panel-log" style="display:none">
-          <div class="section-label">Today's Visitors</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="section-label" style="margin-bottom:0">Today's Visitors</div>
+            <button onclick="downloadLog()" title="Download CSV" style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);font-size:12px;font-weight:600;color:var(--primary);cursor:pointer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export CSV
+            </button>
+          </div>
           <div id="logList"><div class="empty-state"><div class="emoji"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke="var(--border)" stroke-width="1.75"/><path d="M12 3a9 9 0 0 1 9 9" stroke="var(--primary-light)" stroke-width="1.75"/></svg></div>Loading…</div></div>
         </div>
       </div>
@@ -1326,6 +1334,15 @@
 
   /* ── Admin tabs ── */
   let activeVisitors = [];
+  let _logRows = [];
+
+  /* Parse stored "HH:MM:SS" check_in as today's Date for age comparison */
+  function parseCheckInMs(timeStr) {
+    const [h, m, s] = (timeStr || '00:00:00').split(':').map(Number);
+    const d = new Date();
+    d.setHours(h || 0, m || 0, s || 0, 0);
+    return d.getTime();
+  }
 
   function switchAdminTab(name) {
     ['active','pending','log'].forEach(t => {
@@ -1349,7 +1366,27 @@
         $('pendingList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.echeck}</div>No pending check-ins.</div>`;
         return;
       }
-      $('pendingList').innerHTML = rows.map(v => `
+
+      /* Auto-reject requests pending for more than 1 hour */
+      const HOUR_MS = 60 * 60 * 1000;
+      const stale  = rows.filter(v => Date.now() - parseCheckInMs(v.check_in) > HOUR_MS);
+      const active = rows.filter(v => Date.now() - parseCheckInMs(v.check_in) <= HOUR_MS);
+      if (stale.length) {
+        const { time } = now();
+        await Promise.all(stale.map(v =>
+          api('PATCH', `visitors?id=eq.${v.id}`, { status: 'rejected', check_out: time })
+        ));
+        showToast(
+          `${stale.length} request${stale.length > 1 ? 's' : ''} auto-rejected (pending > 1 hour)`,
+          'error'
+        );
+      }
+      if (!active.length) {
+        $('pendingList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.echeck}</div>No pending check-ins.</div>`;
+        return;
+      }
+
+      $('pendingList').innerHTML = active.map(v => `
         <div class="visitor-card" id="pvc-${v.id}">
           <div class="info">
             <strong>${v.name}</strong>
@@ -1585,9 +1622,13 @@
       const rows = await api('GET',
         `visitors?visit_date=eq.${today}&select=*&order=check_in.desc&limit=50`);
       if (!rows.length) {
+        _logRows = [];
         $('logList').innerHTML = `<div class="empty-state"><div class="emoji">${_ic.edoc}</div>No visitors today.</div>`;
         return;
       }
+      _logRows = rows;
+      const statusCls   = s => s === 'inside' ? 'inside' : s === 'rejected' ? 'rejected-badge' : s === 'pending' ? 'pending-badge' : 'left-badge';
+      const statusLabel = s => s === 'inside' ? 'Inside' : s === 'rejected' ? 'Rejected' : s === 'pending' ? 'Pending' : 'Left';
       $('logList').innerHTML = rows.map(v => `
         <div class="log-item">
           <div class="left">
@@ -1595,15 +1636,32 @@
             <span>${v.phone} · ${v.host}</span>
           </div>
           <div class="right">
-            <span class="status-badge ${v.status === 'inside' ? 'inside' : 'left-badge'}">
-              ${v.status === 'inside' ? 'Inside' : 'Left'}
-            </span>
+            <span class="status-badge ${statusCls(v.status)}">${statusLabel(v.status)}</span>
             <span>In: ${v.check_in}${v.check_out ? ' · Out: '+v.check_out : ''}</span>
           </div>
         </div>`).join('');
     } catch(e) {
       $('logList').innerHTML = '<div class="empty-state">Failed to load.</div>';
     }
+  }
+
+  function downloadLog() {
+    if (!_logRows.length) { showToast('No log data to export.', 'error'); return; }
+    const esc = v => `"${String(v || '').replace(/"/g, '""')}"`;
+    const headers = ['Name','Phone','Email','Organization','Host','Department','Purpose','Status','Check In','Check Out','Date'];
+    const csv = [
+      headers.join(','),
+      ..._logRows.map(v => [
+        esc(v.name), esc(v.phone), esc(v.email), esc(v.organization),
+        esc(v.host), esc(v.department), esc(v.purpose), esc(v.status),
+        esc(v.check_in), esc(v.check_out), esc(v.visit_date),
+      ].join(','))
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `visitor-log-${now().date}.csv`; a.click();
+    URL.revokeObjectURL(url);
   }
 
   /* ═══════════════════════════ NUMBER PLATE SCAN ══════════════════════════ */
